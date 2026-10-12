@@ -51,6 +51,7 @@ urlpatterns = [
     path( 'audio/', include('hi.apps.audio.urls' )),
     path( 'profiles/', include('hi.apps.profiles.urls' )),
     path( 'system/', include('hi.apps.system.urls' )),
+    path( 'floorplan3d/', include('hi.apps.floorplan3d.urls' )),
 
     # Custom error pages
     path( '400.html', views.bad_request_response, name='bad_request' ),

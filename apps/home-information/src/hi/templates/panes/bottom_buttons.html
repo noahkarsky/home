@@ -34,6 +34,13 @@
         {% include "console/panes/console_lock_button.html" %}
       </div>
       <div class="mx-1">
+        <a href="{% url 'floorplan3d_home' %}"
+           class="btn btn-tertiary btn-control" role="button"
+           data-async="true" >
+          {% icon "layers" css_class="hi-icon-left" %}3D PLAN
+        </a>
+      </div>
+      <div class="mx-1">
         <a href="{% url 'config_home' %}"
            class="btn btn-tertiary btn-control" role="button"
            data-async="true" >

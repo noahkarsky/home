@@ -23,3 +23,7 @@ tmp/
 # 环境变量
 .env
 .env.*
+
+# Home monorepo
+.data/
+local.env

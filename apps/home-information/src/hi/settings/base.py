@@ -131,6 +131,7 @@ INSTALLED_APPS = [
     'hi.services.paperless',
     'hi.services.immich',
     'hi.apps.profiles',
+    'hi.apps.floorplan3d',
 ]
 
 MIDDLEWARE = [
