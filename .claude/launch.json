@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "floorplan",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "apps/floorplan-3d"],
+      "port": 8765
+    },
+    {
+      "name": "home-information",
+      "runtimeExecutable": "C:/Program Files/Git/bin/bash.exe",
+      "runtimeArgs": ["scripts/hi-dev.sh", "8411"],
+      "port": 8411
+    },
+    {
+      "name": "repo-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8766"],
+      "port": 8766
+    }
+  ]
+}

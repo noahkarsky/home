@@ -1,0 +1,19 @@
+{% extends "modals/action_done.html" %}
+
+{% block modal_dialog_class %}hi-modal-dialog-600{% endblock %}
+
+{% block title_text %}
+Data Import vs. Connector
+{% endblock %}
+
+{% block body %}
+<p>
+  <strong>Data Import</strong> is a one-time copy of items from an
+  external system into Home Information. Once imported: you can edit them freely,
+  but changes will not be reflected in the external system.
+</p>
+<p>
+  A <strong>Connector</strong>, in contrast, tracks and displays the data live — the
+  external system remains the source of truth.
+</p>
+{% endblock %}

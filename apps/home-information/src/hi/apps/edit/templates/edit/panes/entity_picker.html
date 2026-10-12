@@ -1,0 +1,82 @@
+{% extends "edit/panes/sidebar_tabbed.html" %}
+{% load icons %}
+
+{% block items_tab_active %} active{% endblock %}
+
+{% block tab_content %}
+<div class="entity-picker-container">
+  <div class="entity-picker-panel">
+    <div class="entity-picker-header">
+
+      <div class="mb-2">
+        <a href="{% url 'entity_edit_entity_add' %}"
+           class="btn btn-add btn-block btn-control" role="button"
+           data-async="modal">
+          {% icon "plus" css_class="hi-icon-left" %}ADD NEW ITEM
+        </a>
+      </div>
+
+      <div class="search-container mb-3">
+        <div class="input-group">
+          <input type="text" id="{{ DIVID.ENTITY_PICKER_SEARCH_INPUT_ID }}"
+                 class="form-control entity-search-input"
+                 placeholder="Search items...">
+          <div class="input-group-append">
+            <button type="button"
+                    class="btn btn-outline-secondary {{ DIVID.ENTITY_PICKER_SEARCH_CLEAR_CLASS }}"
+                    title="Clear search">
+              {% icon "close" %}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-toggles mb-3">
+        <button class="{{ DIVID.ENTITY_PICKER_FILTER_BTN_CLASS }} active"
+                {{ DIVID.ENTITY_PICKER_DATA_FILTER_ATTR }}="{{ DIVID.ENTITY_PICKER_FILTER_ALL }}">
+          All
+        </button>
+        <button class="{{ DIVID.ENTITY_PICKER_FILTER_BTN_CLASS }}"
+                {{ DIVID.ENTITY_PICKER_DATA_FILTER_ATTR }}="{{ DIVID.ENTITY_PICKER_STATUS_IN_VIEW }}">
+          In View
+        </button>
+        <button class="{{ DIVID.ENTITY_PICKER_FILTER_BTN_CLASS }}"
+                {{ DIVID.ENTITY_PICKER_DATA_FILTER_ATTR }}="{{ DIVID.ENTITY_PICKER_STATUS_NOT_IN_VIEW }}">
+          Not in View
+        </button>
+        <button class="{{ DIVID.ENTITY_PICKER_FILTER_BTN_CLASS }}"
+                {{ DIVID.ENTITY_PICKER_DATA_FILTER_ATTR }}="{{ DIVID.ENTITY_PICKER_STATUS_UNUSED }}">
+          Unused
+        </button>
+      </div>
+    </div>
+
+    <div class="entity-picker-items" id="entity-picker-items">
+      {% block entity_groups %}
+      {# Override this block in child templates #}
+      {% endblock %}
+
+      {% comment %}
+      Paired Items render with the entity groups (they are just another
+      grouping of entities); Collections render last as they are a
+      different kind of item -- a navigable reference, not an entity.
+      {% endcomment %}
+      {% block delegates_section %}
+      {# Override this block for pickers that surface delegate (paired) items #}
+      {% endblock %}
+
+      {% block collections_section %}
+      {# Override this block for location views that need collections section #}
+      {% endblock %}
+
+      <div class="my-3">
+        <a href="{% url 'entity_edit_archive_list' %}"
+           class="btn btn-sm btn-outline-secondary btn-block btn-control" role="button"
+           data-async="modal">
+          {% icon "history" size="sm" css_class="hi-icon-left" %}ARCHIVED ITEMS
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,206 @@
+import json
+
+from django.db import models
+from django.urls import reverse
+
+from hi.apps.common.utils import strip_parent_name_prefix
+from hi.apps.entity.models import EntityState
+
+from hi.integrations.models import IntegrationDetailsModel
+
+from .enums import SensorType, CorrelationRole
+
+
+class SensorHistoryManager(models.Manager):
+    def filter_video_browse(self):
+        """Return queryset filtered for video browsing - records with END
+        correlation role.  We do this mostly because of the ZoneMinder
+        integration behavior where the video duration time is only known on
+        the end event.
+
+        If we did not filter at all, we would be getting the start and end
+        events for the same video stream and thus have duplicates
+        everywhere.
+        """
+        return self.filter(correlation_role_str=str(CorrelationRole.END))
+
+
+class Sensor( IntegrationDetailsModel ):
+    """
+    - Represents an observed state of an entity.
+    - Will sense exactly one EntityState
+    """
+    
+    name = models.CharField(
+        'Name',
+        max_length = 64,
+        null = False, blank = False,
+    )
+    entity_state = models.ForeignKey(
+        EntityState,
+        related_name = 'sensors',
+        verbose_name = 'Entity State',
+        on_delete = models.CASCADE,
+    )
+    sensor_type_str = models.CharField(
+        'Sensor Type',
+        max_length = 32,
+        null = False, blank = False,
+    )
+    persist_history = models.BooleanField(
+        'Persist History',
+        default = True,
+    )
+    # Event-level capability flags. These describe what kind of
+    # historical-playback artifact each reading of this sensor
+    # carries. Distinct from any entity-level live-feed concept
+    # (``Entity.has_video_stream`` / ``has_video_snapshot``), which
+    # is about observing the camera in real time.
+    provides_event_video_clip = models.BooleanField(
+        'Provides Event Video Clip',
+        default = False,
+    )
+    provides_event_video_snapshot = models.BooleanField(
+        'Provides Event Video Snapshot',
+        default = False,
+    )
+    
+    class Meta:
+        verbose_name = 'Sensor'
+        verbose_name_plural = 'Sensors'
+        constraints = [
+            models.UniqueConstraint(
+                fields = [ 'integration_id', 'integration_name' ],
+                name = 'sensor_integration_key',
+            ),
+        ]
+
+    def __repr__(self):
+        return f'{self.name} ({self.entity_state.entity_state_type}) [{self.id}] ({self.integration_id})'
+            
+    def __str__(self):
+        return self.__repr__()
+    
+    @property
+    def sensor_type(self):
+        return SensorType.from_name_safe( self.sensor_type_str )
+
+    @sensor_type.setter
+    def sensor_type( self, sensor_type : SensorType ):
+        self.sensor_type_str = str(sensor_type)
+        return
+
+    @property
+    def css_class(self):
+        return f'hi-sensor-{self.id}'
+
+    @property
+    def short_name(self):
+        """Name with the leading entity-name prefix stripped, for
+        display contexts where the entity name is already visible."""
+        return strip_parent_name_prefix( self.name, self.entity_state.entity.name )
+
+    
+class SensorHistory(models.Model):
+
+    objects = SensorHistoryManager()
+
+    sensor = models.ForeignKey(
+        Sensor,
+        related_name = 'history',
+        verbose_name = 'Sensor',
+        on_delete = models.CASCADE,
+    )
+    value = models.CharField(
+        'Value',
+        max_length = 255
+    )
+    details = models.TextField(
+        'Details',
+        blank = True, null = True,
+    )
+    has_event_video_clip = models.BooleanField(
+        'Has Event Video Clip',
+        default = False,
+    )
+    has_event_video_snapshot = models.BooleanField(
+        'Has Event Video Snapshot',
+        default = False,
+    )
+    correlation_role_str = models.CharField(
+        'Correlation Role',
+        max_length = 32,
+        null = True, blank = True,
+    )
+    # SENSOR-SCOPED identifier — uniqueness is guaranteed only within
+    # a single ``Sensor``'s history (the integration's upstream
+    # event_id, opaque to us). Never query by ``correlation_id``
+    # alone across all SensorHistory rows: scope every lookup with
+    # the ``sensor`` foreign key (or, equivalently, the entity_state /
+    # entity). A global query risks collisions between independent
+    # integrations whose upstream id-space coincidentally overlap.
+    correlation_id = models.CharField(
+        'Correlation ID',
+        max_length = 32,
+        null = True, blank = True,
+    )
+    response_datetime = models.DateTimeField(
+        'Timestamp',
+        db_index = True,
+    )
+
+    class Meta:
+        verbose_name = 'Sensor History'
+        verbose_name_plural = 'Sensor History'
+        ordering = [ '-response_datetime' ]
+        indexes = [
+            models.Index( fields = [ 'sensor', '-response_datetime'] ),
+        ]
+        
+    @property
+    def detail_attrs(self):
+        if self.details:
+            return json.loads( self.details )
+        return dict()
+
+    @property
+    def has_details(self):
+        return bool( self.detail )
+    
+    @property
+    def correlation_role(self) -> CorrelationRole:
+        if self.correlation_role_str:
+            return CorrelationRole.from_name_safe(self.correlation_role_str)
+        return None
+
+    @correlation_role.setter
+    def correlation_role(self, correlation_role: CorrelationRole):
+        self.correlation_role_str = str(correlation_role) if correlation_role else None
+    
+    @property
+    def entity(self):
+        return self.sensor.entity_state.entity
+
+    @property
+    def entity_state(self):
+        return self.sensor.entity_state
+
+    @property
+    def video_browse_url(self) -> str:
+        if self.has_event_video_clip:
+            return reverse( 'console_entity_video_sensor_history_detail',
+                            kwargs = { 'entity_id': self.entity.id,
+                                       'sensor_id': self.sensor.id,
+                                       'sensor_history_id': self.id })
+        if self.sensor.provides_event_video_clip:
+            return reverse( 'console_entity_video_sensor_history',
+                            kwargs = { 'entity_id': self.entity.id,
+                                       'sensor_id': self.sensor.id })
+        return None
+    
+    @property
+    def details_url(self) -> str:
+        if self.has_details:
+            return reverse( 'sense_sensor_history_details',
+                            kwargs = { 'sensor_history_id': self.id })        
+        return None

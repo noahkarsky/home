@@ -1,0 +1,248 @@
+import mimetypes
+
+from django.core.exceptions import ValidationError
+from django import forms
+
+from hi.apps.common.utils import is_blank, str_to_bool
+
+from .enums import AttributeType, AttributeValueType
+from .thumbnail import AttributeThumbnail
+
+
+class RegularAttributeBaseFormSet(forms.BaseInlineFormSet):
+    """Base formset that automatically excludes FILE attributes for regular attribute editing.
+    
+    This formset is used across all attribute-enabled modules (Entity, Location, Config)
+    to ensure FILE type attributes are handled separately from regular attributes.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Apply filtering after parent initialization
+        self.queryset = self._filter_editable_queryset(self.queryset)
+    
+    def get_queryset(self):
+        """Override to automatically filter out FILE attributes"""
+        queryset = super().get_queryset()
+        return self._filter_editable_queryset(queryset)
+
+    def _filter_editable_queryset(self, queryset):
+        return queryset.exclude(value_type_str=str(AttributeValueType.FILE))
+
+
+class AttributeForm( forms.ModelForm ):
+    """
+    Abstract mode form class the corresponds to the abstract model calss
+    Attribute.  When subclassing the Attribute model, you likely also want
+    a subclass of this model form.  Subclassing this fomr looks something
+    like this:
+    
+        class MyAttributeForm( AttributeForm ):
+            class Meta( AttributeForm.Meta ):
+                model = MyAttribute
+    """
+    class Meta:
+        fields = (
+            'name',
+            'value',
+            'order_id',
+        )
+        widgets = {
+            'name': forms.TextInput( attrs={'class': 'form-control'} ),
+            'value': forms.TextInput( attrs={'class': 'form-control'} ),
+        }
+
+    secret = forms.BooleanField(
+        required = False,
+        label = 'Mark as Secret',
+        widget = forms.CheckboxInput(attrs={'class': 'custom-control-input'}),
+    )
+
+    order_id = forms.IntegerField(
+        required = False,
+        label = 'Ordering Index',
+        widget = forms.HiddenInput(),
+    )
+
+    @property
+    def show_as_editable(self):
+        return self._show_as_editable
+    
+    @property
+    def allow_reordering(self):
+        return self._allow_reordering
+    
+    @property
+    def suppress_history(self):
+        return self._suppress_history
+    
+    @property
+    def show_secrets(self):
+        return self._show_secrets
+
+    @property
+    def suppress_add_new(self):
+        """Whether the add-new-attribute form should be suppressed in the UI.
+        Suppressed when: form is unbound (initial render) or custom attributes not allowed."""
+        if self.instance and self.instance.pk:
+            return False
+        if not self.is_bound:
+            return True
+        return not self._can_add_custom_attributes
+
+    def __init__(self, *args, **kwargs):
+        self._show_as_editable = kwargs.pop( 'show_as_editable', True )
+        self._allow_reordering = kwargs.pop( 'allow_reordering', True )
+        self._suppress_history = kwargs.pop( 'suppress_history', False )
+        self._show_secrets = kwargs.pop( 'show_secrets', False )
+        self._can_add_custom_attributes = kwargs.pop( 'can_add_custom_attributes', True )
+        
+        instance = kwargs.get('instance')
+        super().__init__(*args, **kwargs)
+
+        # For boolean attributes, keep string field but set initial as string consistently  
+        if instance and instance.value_type.is_boolean:
+            self.initial['value'] = str(str_to_bool(instance.value))
+            
+        for field in self.fields.values():
+            if self._show_as_editable or ( instance and instance.is_editable ):
+                continue
+            field.widget.attrs['disabled'] = 'disabled'
+            continue
+            
+        return
+            
+    def clean(self):
+        cleaned_data = super().clean()
+        name = cleaned_data.get('name')
+        value = cleaned_data.get('value')
+
+        form_is_bound = bool( self.instance.pk )
+        if form_is_bound:
+            if not self.instance.is_editable:
+                return cleaned_data
+            if ( self.instance.attribute_type == AttributeType.PREDEFINED
+                 and ( name is not None )
+                 and ( name != self.instance.name )):
+                raise ValidationError( 'Changing name forbidden for predefined attributes.' )
+
+            value = cleaned_data.get('value')
+            if self.instance.is_required and is_blank( value ):
+                self.add_error( 'value', 'A value is required.')
+            if self.instance.value_type.is_boolean:
+                cleaned_data['value'] = str(str_to_bool( value ))
+            elif self.instance.value_type.is_integer and not is_blank( value ):
+                self._clean_integer_value( cleaned_data, value )
+            elif self.instance.value_type.is_float and not is_blank( value ):
+                self._clean_float_value( cleaned_data, value )
+
+        if self.cleaned_data.get('secret'):
+            stripped_value = value.strip()
+            value_lines = stripped_value.splitlines()
+            if len( value_lines) > 1:
+                self.add_error( 'value', 'Secret attributes are limited ot a single line.')
+
+        return cleaned_data
+
+    def _clean_integer_value(self, cleaned_data, value):
+        """Server-side enforcement for ``AttributeValueType.INTEGER``
+        attributes. The HTML5 ``<input type="number">`` provides only
+        client-side validation; this catches direct POSTs and any path
+        where the browser's check was bypassed, and applies the
+        ``value_range_int()`` bounds declared on the schema."""
+        try:
+            int_value = int( value )
+        except (ValueError, TypeError):
+            self.add_error( 'value', 'Must be an integer.' )
+            return
+        cleaned_data['value'] = str( int_value )
+        bounds = self.instance.value_range_int()
+        if bounds is None:
+            return
+        low, high = bounds
+        if int_value < low or int_value > high:
+            self.add_error(
+                'value',
+                f'Must be between {low} and {high}.',
+            )
+        return
+
+    def _clean_float_value(self, cleaned_data, value):
+        """Server-side enforcement for ``AttributeValueType.FLOAT``
+        attributes. Uses ``value_range()`` (float-valued bounds) so
+        float-typed schemas can declare ``[0.0, 1.0]`` and similar."""
+        try:
+            float_value = float( value )
+        except (ValueError, TypeError):
+            self.add_error( 'value', 'Must be a number.' )
+            return
+        bounds = self.instance.value_range()
+        if bounds is None:
+            return
+        low, high = bounds
+        if float_value < low or float_value > high:
+            self.add_error(
+                'value',
+                f'Must be between {low} and {high}.',
+            )
+        return
+
+    def save( self, commit = True ):
+        instance = super().save( commit = False )
+
+        if not instance.pk:
+            instance.attribute_type_str = str(AttributeType.CUSTOM)
+            instance.is_editable = True
+            instance.is_required = False
+
+            if self.cleaned_data.get('secret'):
+                instance.value_type_str = str( AttributeValueType.SECRET )
+            else:
+                instance.value_type_str = str(AttributeValueType.TEXT)
+
+        elif not instance.is_editable:
+            return instance
+        
+        if commit:
+            instance.save()
+        return instance
+
+    
+class AttributeUploadForm( forms.ModelForm ):
+
+    class Meta:
+        fields = (
+            'file_value',
+        )
+        
+    def clean(self):
+        cleaned_data = super().clean()
+
+        file_value = cleaned_data.get('file_value')
+        if not file_value:
+            self.add_error( 'file_value', 'A file is required.')
+
+        return cleaned_data
+
+    def save( self, commit = True ):
+        instance = super().save( commit = False )
+
+        uploaded_mime_type = getattr(instance.file_value, 'content_type', None)
+        if uploaded_mime_type:
+            uploaded_mime_type = uploaded_mime_type.split(';', 1)[0].strip().lower()
+        if not uploaded_mime_type:
+            mime_type_tuple = mimetypes.guess_type( instance.file_value.name )
+            uploaded_mime_type = mime_type_tuple[0]
+        
+        instance.name = instance.file_value.name
+        instance.file_mime_type = uploaded_mime_type
+        instance.value_type_str = str( AttributeValueType.FILE )
+        instance.attribute_type_str = str(AttributeType.CUSTOM)
+        instance.is_editable = True
+        instance.is_required = False
+
+        if commit:
+            instance.save()
+            thumbnail_generated = AttributeThumbnail(instance).generate_thumbnail_best_effort()
+            instance.set_thumbnail_exists_cache(thumbnail_generated)
+        return instance

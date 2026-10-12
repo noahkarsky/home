@@ -1,0 +1,406 @@
+import logging
+import threading
+from asgiref.sync import sync_to_async
+from typing import Any, Dict, List, Optional
+
+from cachetools import LRUCache
+
+from hi.apps.common.singleton_manager import SingletonManager
+from hi.apps.common.utils import str_to_bool
+from hi.apps.system.aggregate_health_provider import AggregateHealthProvider
+from hi.apps.system.api_health_status_provider import ApiHealthStatusProvider
+from hi.apps.system.provider_info import ProviderInfo
+from hi.apps.system.enums import HealthStatusType
+
+from hi.integrations.exceptions import (
+    IntegrationAttributeError,
+    IntegrationError,
+    IntegrationDisabledError,
+)
+from hi.integrations.transient_models import (
+    ConnectionTestResult,
+    IntegrationKey,
+    IntegrationValidationResult,
+)
+from hi.integrations.models import Integration, IntegrationAttribute
+
+from .constants import HassTimeouts
+from .enums import HassAttributeType
+from .hass_client import HassClient
+from .hass_client_factory import HassClientFactory
+from .hass_metadata import HassMetaData
+from .hass_models import HassApi, HassState
+
+logger = logging.getLogger(__name__)
+
+
+class HassManager( SingletonManager, AggregateHealthProvider, ApiHealthStatusProvider ):
+
+    # Generous against realistic HA installs; bounded only as memory
+    # defense against pathological long-running scale.
+    LATEST_ATTRS_CACHE_MAXSIZE = 128
+
+    def __init_singleton__( self ):
+        super().__init_singleton__()
+        self._hass_attr_type_to_attribute = dict()
+        self._hass_client = None
+        self._client_factory = HassClientFactory()
+
+        self._change_listeners = set()
+        self._polling_interval_secs = HassTimeouts.POLLING_INTERVAL_SECS
+
+        # Selective-insert LRU cache (see update_latest_attrs_cache
+        # for the policy). The lock guards both writes and reads
+        # because LRUCache.__getitem__ bumps the recency order, so
+        # readers implicitly write to the underlying OrderedDict.
+        self._latest_attrs_by_entity_id = LRUCache(
+            maxsize = self.LATEST_ATTRS_CACHE_MAXSIZE,
+        )
+        self._latest_attrs_lock = threading.Lock()
+
+        # HI Entity.id -> HA wire entity_id, for camera-domain sensors.
+        self._entity_id_to_ha_state_id: Dict[ int, str ] = {}
+
+        # Add self as the API health status provider to aggregate
+        self.add_api_health_status_provider(self)
+
+        return
+
+    @classmethod
+    def get_provider_info(cls) -> ProviderInfo:
+        return ProviderInfo(
+            provider_id = 'hi.services.hass.manager',
+            provider_name = 'Home Assistant Integration',
+            description = '',            
+        )
+
+    @classmethod
+    def get_api_provider_info(cls) -> ProviderInfo:
+        """Get the API service info for this manager."""
+        return ProviderInfo(
+            provider_id = 'hi.services.hass.api',
+            provider_name = 'Home Assistant API',
+            description = 'Home Assistant REST API for entity states'
+        )
+    
+    def register_change_listener( self, callback ):
+        if callback not in self._change_listeners:
+            logger.debug( f'Adding HASS setting change listener from {callback.__module__}' )
+            self._change_listeners.add( callback )
+        else:
+            logger.debug( f'HASS setting change listener from'
+                          f' {callback.__module__} already registered, skipping duplicate' )
+        return
+    
+    def notify_settings_changed(self):
+        self.reload()
+        for callback in self._change_listeners:
+            try:
+                callback()
+            except Exception:
+                logger.exception( 'Problem calling setting change callback.' )
+            continue
+        return
+
+    @property
+    def hass_client(self):
+        return self._hass_client
+
+    def _reload_implementation( self ):
+        """
+        Perform the actual HASS manager reload work.
+        Called by SingletonManager with appropriate locks already held.
+        """
+        try:
+            self._hass_attr_type_to_attribute = self._load_attributes()
+            self._polling_interval_secs = self._read_polling_interval_secs()
+            self._hass_client = self.create_hass_client( self._hass_attr_type_to_attribute )
+            self.clear_caches()
+            self._rebuild_entity_id_to_ha_state_id_map()
+            self.record_healthy('Reloaded')
+
+        except IntegrationDisabledError:
+            msg = 'HASS integration disabled'
+            logger.info(msg)
+            self.record_disabled( msg  )
+
+        except IntegrationError as e:
+            error_msg = f'HASS integration configuration error: {e}'
+            logger.error(error_msg)
+            self.record_error( f"Configuration error: {error_msg}" )
+
+        except IntegrationAttributeError as e:
+            error_msg = f'HASS integration attribute error: {e}'
+            logger.error(error_msg)
+            self.record_error( f"Configuration error: {error_msg}" )
+
+        except Exception as e:
+            error_msg = f'Unexpected error loading HASS configuration: {e}'
+            logger.exception(error_msg)
+            self.record_warning( f"Temporary issue: {error_msg}" )
+        return
+
+    def clear_caches(self):
+        with self._latest_attrs_lock:
+            self._latest_attrs_by_entity_id.clear()
+        return
+
+    def _rebuild_entity_id_to_ha_state_id_map(self):
+        from hi.apps.sense.models import Sensor
+        pairs = Sensor.objects.filter(
+            integration_id = HassMetaData.integration_id,
+            integration_name__startswith = f'{HassApi.CAMERA_DOMAIN}.',
+        ).values_list( 'entity_state__entity_id', 'integration_name' )
+        # Camera Sensors carry substate-suffixed integration_names
+        # ('camera.front_door~state', '...~motion_detection') since
+        # cameras went through the multi-substate decomposition path.
+        # The latest-attrs cache is keyed by the bare HA state id
+        # ('camera.front_door'); strip the suffix so the snapshot
+        # lookup hits the cache. Multiple substate sensors for the
+        # same camera all collapse to the same bare key — consistent
+        # by construction.
+        self._entity_id_to_ha_state_id = {
+            entity_id: name.split( '~', 1 )[ 0 ]
+            for entity_id, name in pairs
+        }
+        return
+
+    def get_ha_state_id_for_entity( self, entity ) -> Optional[ str ]:
+        return self._entity_id_to_ha_state_id.get( entity.id )
+
+    def update_latest_attrs_cache( self, hass_state_map : Dict[ str, HassState ] ):
+        """Refresh per-entity attributes from a polling snapshot.
+        Selective insert: only domains downstream code needs
+        attribute access for are cached; other domains pass through
+        without consuming cache slots."""
+        with self._latest_attrs_lock:
+            for entity_id, state in hass_state_map.items():
+                if state.domain != HassApi.CAMERA_DOMAIN:
+                    continue
+                self._latest_attrs_by_entity_id[ entity_id ] = dict( state.attributes )
+        return
+
+    def get_latest_attrs( self, entity_id : str ) -> Optional[ Dict[ str, Any ] ]:
+        with self._latest_attrs_lock:
+            return self._latest_attrs_by_entity_id.get( entity_id )
+
+    def _load_attributes(self) -> Dict[ HassAttributeType, IntegrationAttribute ]:
+        try:
+            hass_integration = Integration.objects.get( integration_id = HassMetaData.integration_id )
+        except Integration.DoesNotExist:
+            raise IntegrationError( 'Home Assistant integration is not implemented.' )
+
+        if not hass_integration.is_enabled:
+            raise IntegrationDisabledError( 'Home Assistant integration is not enabled.' )
+
+        integration_attributes = list(hass_integration.attributes.all())
+        return self._build_hass_attr_type_to_attribute_map(
+            integration_attributes=integration_attributes,
+            enforce_requirements=True
+        )
+
+    def _read_polling_interval_secs(self) -> int:
+        """Read the configured polling interval. Form-level validation
+        (``AttributeForm._clean_integer_value`` + the schema's
+        ``value_range`` declaration) enforces type and range at save
+        time, so any persisted value should already be a positive int
+        within bounds. The defensive fallbacks here only fire on the
+        edge cases form validation can't cover: the attribute row is
+        missing (integration enabled but never saved) or the DB was
+        manually edited / migrated from legacy data."""
+        attribute = self._hass_attr_type_to_attribute.get(
+            HassAttributeType.POLLING_INTERVAL_SECS,
+        )
+        if attribute is None or not attribute.value:
+            return HassTimeouts.POLLING_INTERVAL_SECS
+        try:
+            return int( attribute.value )
+        except (ValueError, TypeError):
+            logger.warning(
+                f'Malformed HASS polling interval value "{attribute.value}" '
+                f'(form validation should have caught this); falling '
+                f'back to default {HassTimeouts.POLLING_INTERVAL_SECS}s'
+            )
+            return HassTimeouts.POLLING_INTERVAL_SECS
+
+    @property
+    def polling_interval_secs(self) -> int:
+        return self._polling_interval_secs
+    
+    def create_hass_client(
+            self,
+            hass_attr_type_to_attribute : Dict[ HassAttributeType, IntegrationAttribute ] ) -> HassClient:
+        """Create a HassClient from integration attributes.
+
+        Delegates to HassClientFactory for actual client creation.
+        """
+        return self._client_factory.create_client(hass_attr_type_to_attribute)
+
+    @property
+    def should_add_alarm_events( self ) -> bool:
+        attribute = self._hass_attr_type_to_attribute.get( HassAttributeType.ADD_ALARM_EVENTS )
+        if attribute:
+            return str_to_bool( attribute.value )
+        return False
+
+    @property
+    def include_filter( self ) -> str:
+        attribute = self._hass_attr_type_to_attribute.get( HassAttributeType.INCLUDE_FILTER )
+        if attribute and attribute.value:
+            return attribute.value
+        return HassAttributeType.INCLUDE_FILTER.initial_value
+        
+    def fetch_hass_states_from_api( self, verbose : bool = True ) -> Dict[ str, HassState ]:
+        if verbose:
+            logger.debug( 'Getting current HASS states.' )
+        
+        if not self.hass_client:
+            logger.warning('HASS client not available - cannot fetch states')
+            return {}
+            
+        with self.api_call_context( 'hass_states' ):
+            hass_state_sequence = self.hass_client.states()
+
+        hass_entity_id_to_state = dict()
+        for hass_state in hass_state_sequence:
+            hass_entity_id = hass_state.entity_id
+            hass_entity_id_to_state[hass_entity_id] = hass_state
+            continue
+
+        return hass_entity_id_to_state
+    
+    async def fetch_hass_states_from_api_async( self, verbose : bool = True ) -> Dict[ str, HassState ]:
+        """
+        Async version of fetch_hass_states_from_api for use in async contexts (monitors).
+        Uses sync_to_async to properly handle the synchronous API call.
+        """
+        return await sync_to_async(
+            self.fetch_hass_states_from_api,
+            thread_sensitive=True
+        )(verbose=verbose)
+    
+    def test_client_with_attributes(
+            self,
+            hass_attr_type_to_attribute: Dict[HassAttributeType, IntegrationAttribute]
+    ) -> IntegrationValidationResult:
+        """
+        Test API connectivity using provided attributes without affecting manager state.
+
+        Args:
+            hass_attr_type_to_attribute: Dictionary mapping attribute types to attribute objects
+
+        Returns:
+            IntegrationValidationResult with test results
+        """
+        try:
+            # Create temporary client with provided attributes
+            temp_client = self._client_factory.create_client(hass_attr_type_to_attribute)
+            # Test the client
+            return self._client_factory.test_client(temp_client)
+
+        except IntegrationError as e:
+            return IntegrationValidationResult.error(
+                status=HealthStatusType.ERROR,
+                error_message=str(e)
+            )
+        except IntegrationAttributeError as e:
+            return IntegrationValidationResult.error(
+                status=HealthStatusType.ERROR,
+                error_message=str(e)
+            )
+    
+    def validate_configuration(
+            self,
+            integration_attributes: List[IntegrationAttribute]) -> IntegrationValidationResult:
+        """
+        Schema-only validation. Confirms required attributes are present
+        and structurally usable. Does NOT touch the network — for live
+        access validation, see validate_access().
+        """
+        try:
+            self._build_hass_attr_type_to_attribute_map(
+                integration_attributes=integration_attributes,
+                enforce_requirements=True,
+            )
+            return IntegrationValidationResult.success()
+
+        except IntegrationAttributeError as e:
+            return IntegrationValidationResult.error(
+                status=HealthStatusType.ERROR,
+                error_message=str(e),
+            )
+        except Exception as e:
+            logger.exception(f'Error in HASS configuration validation: {e}')
+            return IntegrationValidationResult.error(
+                status=HealthStatusType.WARNING,
+                error_message=f'Configuration validation failed: {e}'
+            )
+
+    def validate_access(
+            self,
+            integration_attributes: List[IntegrationAttribute],
+            timeout_secs: Optional[float]) -> ConnectionTestResult:
+        """
+        Live access validation with bounded timeout. Builds a temporary
+        HassClient against the proposed attributes and exercises the
+        lightweight `/api/` ping endpoint.
+        """
+        try:
+            hass_attr_type_to_attribute = self._build_hass_attr_type_to_attribute_map(
+                integration_attributes=integration_attributes,
+                enforce_requirements=True,
+            )
+            temp_client = self._client_factory.create_client(
+                hass_attr_type_to_attribute=hass_attr_type_to_attribute,
+                timeout_secs=timeout_secs,
+            )
+            validation_result = self._client_factory.test_client(temp_client)
+            if validation_result.is_valid:
+                return ConnectionTestResult.success()
+            return ConnectionTestResult.failure(
+                validation_result.error_message or 'Access validation failed'
+            )
+
+        except IntegrationAttributeError as e:
+            return ConnectionTestResult.failure(str(e))
+        except IntegrationError as e:
+            return ConnectionTestResult.failure(str(e))
+        except Exception as e:
+            logger.exception(f'Error in HASS access validation: {e}')
+            return ConnectionTestResult.failure(f'Access validation error: {e}')
+    
+    def _build_hass_attr_type_to_attribute_map(
+            self, 
+            integration_attributes: List[IntegrationAttribute], 
+            enforce_requirements: bool = True) -> Dict[HassAttributeType, IntegrationAttribute]:
+        """Build mapping from HassAttributeType to IntegrationAttribute.
+        
+        Args:
+            integration_attributes: List of IntegrationAttribute objects
+            enforce_requirements: If True, raise errors for missing required attributes
+            
+        Returns:
+            Dictionary mapping HassAttributeType to IntegrationAttribute
+        """
+        hass_attr_type_to_attribute = {}
+        integration_key_to_attribute = {attr.integration_key: attr for attr in integration_attributes}
+        
+        for hass_attr_type in HassAttributeType:
+            integration_key = IntegrationKey(
+                integration_id = HassMetaData.integration_id,
+                integration_name = str(hass_attr_type),
+            )
+            hass_attr = integration_key_to_attribute.get(integration_key)
+            
+            if not hass_attr:
+                if enforce_requirements and hass_attr_type.is_required:
+                    raise IntegrationAttributeError(f'Missing HASS attribute {hass_attr_type}')
+                else:
+                    continue
+                    
+            if enforce_requirements and hass_attr.is_required and not hass_attr.value.strip():
+                raise IntegrationAttributeError(f'Missing HASS attribute value for {hass_attr_type}')
+            
+            hass_attr_type_to_attribute[hass_attr_type] = hass_attr
+            
+        return hass_attr_type_to_attribute

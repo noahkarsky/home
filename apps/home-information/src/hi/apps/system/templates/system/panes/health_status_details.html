@@ -1,0 +1,131 @@
+{% load humanize %}
+{% load common_tags %}
+{% load icons %}
+{% load tz %}
+{% timezone USER_TIMEZONE %}
+
+{% with health_status_provider.health_status as health_status %}
+<div class="container-fluid px-0">
+  <!-- Overall Provider Status -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex align-items-center mb-3">
+        <span class="badge monitor-status-badge {{ health_status.status_badge_class }} mr-3">
+          {% icon health_status.status_icon css_class="mr-2" %}
+          {{ health_status.status_display }}
+        </span>
+      </div>
+
+      <!-- Provider Heartbeat -->
+      {% if health_status.heartbeat %}
+      <div class="row">
+        <div class="col-sm-3"><strong>Provider Status:</strong></div>
+        <div class="col-sm-9">
+          <span class="heartbeat-indicator {{ health_status.heartbeat_css_class }}"></span>
+          <span class="{{ health_status.heartbeat_text_class }}">{{ health_status.heartbeat_status_text }}</span>
+        </div>
+      </div>
+      <div class="row mt-2">
+        <div class="col-sm-3"><strong>Last Seen:</strong></div>
+        <div class="col-sm-9">
+          {{ health_status.heartbeat|localtime|naturaltime }}
+          <span class="text-muted" >
+            ({{ health_status.heartbeat|localtime|date:"M j, Y H:i:s" }})
+          </span>
+        </div>
+      </div>
+      {% if health_status.expected_heartbeat_interval_secs %}
+      <div class="row mt-2">
+        <div class="col-sm-3"><strong>Expected every:</strong></div>
+        <div class="col-sm-9">{{ health_status.expected_heartbeat_interval_secs|format_duration }}</div>
+      </div>
+      {% endif %}
+      {% endif %}
+
+      <div class="row mt-2">
+        <div class="col-sm-3"><strong>Last Update:</strong></div>
+        <div class="col-sm-9">
+          {{ health_status.last_update|localtime|naturaltime }}
+          <span class="text-muted" >
+            ({{ health_status.last_update|localtime|date:"M j, Y H:i:s" }})
+          </span>
+        </div>
+      </div>
+
+      {% if health_status.last_message %}
+      <div class="row mt-2">
+        <div class="col-sm-3"><strong>Last Message:</strong></div>
+        <div class="col-sm-9">
+          <div class="{{ health_status.status_alert_class }} p-2">
+            {{ health_status.last_message }}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if health_status.error_count > 1 %}
+      <div class="row mt-2">
+        <div class="col-sm-3"><strong>Error Count:</strong></div>
+        <div class="col-sm-9">{{ health_status.error_count }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Status Summary Alert -->
+  <div class="row">
+    <div class="col-12">
+      <div class="alert {{ health_status.status_alert_class }}">
+        <p class="mb-0">
+          {% icon health_status.status_icon css_class="mr-2" %}
+          {{ health_status.status_summary_message }}
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  {% if health_status.api_status_map %}
+  <!-- API Sources Section -->
+  <div class="row">
+    <div class="col-12">
+      <h6 class="mb-3">
+        {% icon "plug" css_class="mr-2" %}
+        API Sources
+      </h6>
+
+      {% for api_health_status in health_status.api_status_map.values %}
+      <hr />
+      {% include "system/panes/api_health_status_details.html" with api_health_status=api_health_status %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if health_status.subordinate_status_map %}
+  <!-- Subordinate Providers Section -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <h6 class="mb-3">
+        {% icon "tasks" css_class="mr-2" %}
+        Components
+      </h6>
+
+      {% for subordinate_health_status in health_status.subordinate_status_map.values %}
+      <hr />
+      {% include "system/panes/subordinate_health_status_details.html" with subordinate_health_status=subordinate_health_status %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if health_status_provider.get_provider_info.description %}
+  <div class="row">
+    <div class="col-12">
+      <small class="text-muted">{{ health_status_provider.get_provider_info.description }}</small>
+    </div>
+  </div>
+  {% endif %}
+  
+</div>
+{% endwith %}
+{% endtimezone %}

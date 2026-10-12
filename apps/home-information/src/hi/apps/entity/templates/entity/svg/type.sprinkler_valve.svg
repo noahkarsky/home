@@ -1,0 +1,33 @@
+<rect class="hi-entity-bg" x="0" y="0" width="64" height="64" fill="none"/>
+
+<!-- Valve body (round plastic housing) -->
+<ellipse cx="32" cy="38" rx="18" ry="12" fill="#2e7d32" stroke="#1b5e20" stroke-width="1.5"/>
+
+<!-- Valve body top surface -->
+<ellipse cx="32" cy="34" rx="18" ry="10" fill="#4caf50" stroke="#2e7d32" stroke-width="1.5"/>
+
+<!-- Solenoid on top -->
+<rect x="26" y="14" width="12" height="18" rx="2" fill="#333" stroke="#222" stroke-width="1.5"/>
+
+<!-- Solenoid cap -->
+<rect x="28" y="10" width="8" height="6" rx="2" fill="#555" stroke="#333" stroke-width="1"/>
+
+<!-- Solenoid wires -->
+<path d="M30,10 C28,6 24,4 20,4" fill="none" stroke="#c0392b" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M34,10 C36,6 40,4 44,4" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+
+<!-- Flow arrow on body -->
+<path d="M22,34 L30,34" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+<path d="M28,32 L30,34 L28,36" stroke="#fff" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+<!-- Pipe connection left -->
+<rect x="2" y="32" width="14" height="8" rx="3" fill="#888" stroke="#555" stroke-width="1"/>
+
+<!-- Pipe connection right -->
+<rect x="48" y="32" width="14" height="8" rx="3" fill="#888" stroke="#555" stroke-width="1"/>
+
+<!-- Bleed screw on top -->
+<circle cx="40" cy="28" r="2" fill="#888" stroke="#555" stroke-width="0.5"/>
+
+<!-- Valve box hint (ground level) -->
+<line x1="4" y1="50" x2="60" y2="50" stroke="#8d6e63" stroke-width="1.5" stroke-dasharray="4,3"/>

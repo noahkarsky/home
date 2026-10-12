@@ -1,0 +1,24 @@
+{# Aliases declared in panel.py (role_data_template_aliases):           #}
+{#   smoke_data, battery_data.                                          #}
+<div class="hi-state-panel-smoke_detector hi-state-panel-smoke_detector--tile"
+     data-state-id="{{ smoke_data.entity_state.id }}"
+     data-status
+     status="{{ smoke_data.svg_status_style.status_value }}">
+
+  {% include "entity/state_panels/smoke_detector/badge.html" %}
+
+  <div class="status-label status-label--idle">All Clear</div>
+  <div class="status-label status-label--active">Smoke!</div>
+  <div class="status-label status-label--recent">Recent</div>
+  <div class="status-label status-label--past">Past</div>
+
+  <div class="entity-name">{{ entity.name }}</div>
+
+  {% if battery_data %}
+  <div class="low-battery-warning"
+       data-state-id="{{ battery_data.entity_state.id }}"
+       data-status
+       status="{{ battery_data.svg_status_style.status_value }}">Low Battery</div>
+  {% endif %}
+
+</div>

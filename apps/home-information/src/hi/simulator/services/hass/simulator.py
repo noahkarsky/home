@@ -1,0 +1,99 @@
+from typing import List, Set
+
+from hi.simulator.services.base_models import SimEntityDefinition, SimEntityFields, SimState
+from hi.simulator.services.exceptions import SimEntityValidationError
+from hi.simulator.services.service_simulator import ServiceSimulator
+from hi.simulator.services.sim_entity import SimEntity
+
+from .sim_models import HASS_SIM_ENTITY_DEFINITION_LIST, HassInsteonSimEntityFields, HassState
+
+
+class HassSimulator( ServiceSimulator ):
+
+    @property
+    def id(self):
+        return 'hass'
+
+    @property
+    def label(self):
+        return 'Home Assistant'
+
+    @property
+    def integration_urls(self):
+        return [ ( 'API URL', 'services/hass' ) ]
+
+    def get_hass_sim_state_list( self ) -> List[ HassState ]:
+        sim_state_list = list()
+        for sim_entity in self.sim_entities:
+            sim_state_list.extend( sim_entity.sim_state_list )
+            continue
+        return sim_state_list
+
+    def set_sim_state_by_hass_entity_id( self,
+                                         hass_entity_id  : str,
+                                         value_str       : str ) -> SimState:
+        for sim_entity in self._sim_entity_map.values():
+            for sim_state in sim_entity.sim_state_list:
+                if sim_state.entity_id == hass_entity_id:
+                    return sim_entity.set_sim_state(
+                        sim_state_id = sim_state.sim_state_id,
+                        value_str = value_str,
+                    )
+                continue
+            continue
+        raise KeyError( f'HAss entity {hass_entity_id} does not exist.' )
+
+    def find_sim_entity_by_hass_entity_id( self, hass_entity_id : str ) -> SimEntity:
+        """Locate the SimEntity that owns a SimState with the given
+        HA entity_id, or return None if no match. Used by the
+        service-call dispatcher to map an incoming HA service call
+        to the right per-device-type handler — the handler then
+        decides which of the entity's SimStates to update and how."""
+        for sim_entity in self._sim_entity_map.values():
+            for sim_state in sim_entity.sim_state_list:
+                if sim_state.entity_id == hass_entity_id:
+                    return sim_entity
+                continue
+            continue
+        return None
+        
+    @property
+    def sim_entity_definition_list(self) -> List[ SimEntityDefinition ]:
+        return HASS_SIM_ENTITY_DEFINITION_LIST
+
+    def validate_new_sim_entity_fields( self, new_sim_entity_fields : SimEntityFields ):
+        if isinstance( new_sim_entity_fields, HassInsteonSimEntityFields ):
+            self._validate_insteon_fields(
+                candidate_sim_entity_fields = new_sim_entity_fields,
+                exclude_sim_entity_ids = set(),
+            )
+        return
+    
+    def validate_updated_sim_entity( self, updated_sim_entity : SimEntity ):
+        sim_entity_fields = updated_sim_entity.sim_entity_fields
+        if isinstance( sim_entity_fields, HassInsteonSimEntityFields ):
+            self._validate_insteon_fields(
+                candidate_sim_entity_fields = updated_sim_entity.sim_entity_fields,
+                exclude_sim_entity_ids = { updated_sim_entity.id },
+            )
+        return
+
+    def _validate_insteon_fields( self,
+                                  candidate_sim_entity_fields  : HassInsteonSimEntityFields,
+                                  exclude_sim_entity_ids       : Set[ int ] ):
+
+        existing_insteon_addresses = set()
+        for sim_entity in self.sim_entities:
+            if sim_entity.id in exclude_sim_entity_ids:
+                continue
+            sim_entity_fields = sim_entity.sim_entity_fields
+            if isinstance( sim_entity_fields, HassInsteonSimEntityFields ):
+                existing_insteon_addresses.add( sim_entity_fields.insteon_address )
+            continue
+
+        candidate_insteon_address = candidate_sim_entity_fields.insteon_address
+        if candidate_insteon_address in existing_insteon_addresses:
+            raise SimEntityValidationError(
+                f'Insteon address "{candidate_insteon_address}" already used.'
+            )
+        return

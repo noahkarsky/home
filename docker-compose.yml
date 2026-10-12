@@ -1,0 +1,26 @@
+# Home Information, built from this monorepo, with the floorplan-3d designer
+# under CONFIGURE > 3D Floor Plan (and the 3D PLAN button).
+#
+#   cp apps/home-information/local.env.example local.env   # then fill it in, or
+#   python apps/home-information/deploy/env-generate.py --env-name local
+#   docker compose up -d --build
+#
+# Then visit http://localhost:9411
+
+services:
+  hi:
+    build: ./apps/home-information
+    image: home-information:monorepo
+    container_name: hi
+    restart: unless-stopped
+    ports:
+      - "9411:8000"
+    env_file:
+      - ./local.env
+    environment:
+      HI_FLOORPLAN3D_HTML: /floorplan3d/index.html
+    volumes:
+      - $HOME/.hi/database:/data/database
+      - $HOME/.hi/media:/data/media
+      # Served live, so designer changes show up without rebuilding the image
+      - ./apps/floorplan-3d:/floorplan3d:ro

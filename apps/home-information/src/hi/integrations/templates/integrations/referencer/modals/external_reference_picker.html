@@ -1,0 +1,100 @@
+{% extends "modals/action_with_cancel.html" %}
+{% load icons %}
+
+{% comment %}
+EXTERNAL_REFERENCE picker modal.
+
+Selection state lives in external-reference-picker.js (one selection set per open
+modal instance, keyed by the picker-root DOM node -- i.e., this
+modal-dialog). external-reference-picker.js attaches its handlers as delegated
+listeners at document level, so antinode-injected modal content
+wires up automatically -- no init step in this template.
+
+Layout:
+
+  - Modal dialog gets ``modal-dialog-scrollable`` (Bootstrap-native
+    opt-in: the modal-body scrolls, while modal-header and
+    modal-footer stay anchored). The selection chip row + Add
+    button live in the footer alongside Cancel, so they remain
+    visible regardless of how far the operator scrolls through
+    search results.
+  - The picker-root class lives on the modal-dialog so JS handlers
+    can ``closest()`` from either body (search row, result cards)
+    or footer (chips, attach form) and find the same picker.
+
+Context:
+  integration_data_list : list[IntegrationData]
+  integration_data      : IntegrationData      (initially-selected source)
+  item_type             : ItemType (ENTITY or LOCATION)
+  item_id               : int (host record id)
+  limit                 : int  (initial page size)
+  page_size_choices     : tuple[int]
+
+Wire-format strings (DOM class names, data-attribute names, form
+field names) come from ``hi.constants.DIVID`` (mirrored in
+``static/js/main.js`` under ``Hi.REF_PICKER_*``).
+{% endcomment %}
+
+{% block modal_dialog_class %}modal-dialog-scrollable hi-modal-dialog-700 {{ DIVID.REF_PICKER_ROOT_CLASS }}{% endblock %}
+
+{% block title_text %}
+Link Content
+{% endblock %}
+
+{% block body %}
+{% include "integrations/referencer/panes/external_reference_picker_body.html" %}
+{% endblock %}
+
+{% block footer %}
+<div class="w-100">
+
+  {# ----- Chip row + empty-state hint ----- #}
+  <div class="d-flex flex-wrap align-items-center mb-2 mt-1">
+    <div class="{{ DIVID.REF_PICKER_CHIPS_EMPTY_CLASS }} small text-muted">
+      No content selected yet.
+    </div>
+    <div class="{{ DIVID.REF_PICKER_CHIPS_CLASS }} d-flex flex-wrap"></div>
+  </div>
+
+  {# ----- Cancel + Add row ----- #}
+  <div class="d-flex justify-content-between align-items-center">
+    {% if item_type.is_entity %}
+      {% url 'entity_edit' entity_id=item_id as owner_edit_url %}
+    {% else %}
+      {% url 'location_edit_location_edit' location_id=item_id as owner_edit_url %}
+    {% endif %}
+    <a id="hi-modal-cancel" role="button"
+       class="btn btn-outline-tertiary"
+       href="{{ owner_edit_url }}"
+       data-async="modal">
+      {% icon "cancel" css_class="hi-icon-left" %}CANCEL
+    </a>
+    {% comment %}
+    No ``data-async`` here: external-reference-picker.js owns the submit so it can
+    populate ``selections_json`` and POST through antinode's public
+    API (``AN.hideModalIfNeeded`` + ``AN.post``). Letting antinode
+    also bind via ``data-async`` would race the field-population --
+    antinode reads the form at the <body> level before external-reference-picker's
+    document-level submit handler fires.
+    {% endcomment %}
+    <form class="{{ DIVID.REF_PICKER_ATTACH_FORM_CLASS }} m-0"
+          method="post"
+          action="{% url 'integrations_external_reference_attach' %}">
+      {% csrf_token %}
+      <input type="hidden" name="{{ DIVID.REF_PICKER_ITEM_TYPE_FIELD }}" value="{{ item_type }}">
+      <input type="hidden" name="{{ DIVID.REF_PICKER_ITEM_ID_FIELD }}" value="{{ item_id }}">
+      {# Kept in sync with the search-form copy by external-reference-picker.js on source switch. #}
+      <input type="hidden"
+             name="{{ DIVID.REF_PICKER_INTEGRATION_ID_FIELD }}"
+             value="{{ integration_data.integration_id }}">
+      <input type="hidden" name="{{ DIVID.REF_PICKER_SELECTIONS_JSON_FIELD }}" value="">
+      <button type="submit"
+              class="btn btn-primary {{ DIVID.REF_PICKER_ATTACH_BTN_CLASS }}"
+              disabled>
+        {% icon "check-circle" css_class="hi-icon-left" %}<span class="{{ DIVID.REF_PICKER_ATTACH_LABEL_CLASS }}">Add 0 Links</span>
+      </button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

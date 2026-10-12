@@ -1,0 +1,331 @@
+"""
+Attribute Edit Contexts - Generic context provider for attribute editing templates.
+
+These classes provide a clean abstraction that allows attribute editing templates
+to work generically across different owner types (Entity, Location, etc.) while
+maintaining type safety and clear URL routing patterns.
+
+Usage:
+
+- You have a Django model that extends AttributeModel and adds a foreign key
+- The owner object need to be a Django Model that serves as a foreign key into the AttributeModel subclass
+- You need to defined subclasses of AttributePageEditContext and AttributeItemEditContext.
+- In your view, you need to define one AttributePageEditContext instance
+- In your view, you need to define one or more AttributeItemEditContext instances
+
+Two Use Cases:
+
+1) Single Instance Editing (Entity, Location, modals)
+
+   Has one AttributeItemEditContext instance and that can be also be used for AttributePageEditContext.
+
+2) Multiple Instance Editing (Subsystem, special case)
+
+   Has multiple AttributeItemEditContext instance and a separate AttributePageEditContext.
+
+"""
+from typing import Any, Dict, Optional, Type
+
+from django.forms import ModelForm, BaseInlineFormSet
+from django.db.models import Model
+
+from hi.constants import DIVID
+
+from .forms import AttributeUploadForm
+from .models import AttributeModel, SoftDeleteAttributeModel
+
+
+class AttributePageEditContext:
+
+    def __init__(self,
+                 owner_type             : str,
+                 owner                  : Model           = None,
+                 extra_template_context : Optional[Dict]  = None ) -> None:
+        self.owner_type = owner_type.lower()
+        self.owner = owner
+        # View-supplied extras that the framework's template-context
+        # builders merge in via ``to_template_context()``. Stored as
+        # data only; the view owns the business logic that built it.
+        # Both the initial-GET and async-POST response paths pick
+        # the extras up because both call ``to_template_context()``.
+        self._extra_template_context = dict( extra_template_context or {} )
+        return
+
+    @property
+    def owner_id(self) -> int:
+        """Get the owner's primary key ID."""
+        if self.owner:
+            return self.owner.id
+        return None
+    
+    @property
+    def owner_id_param_name(self) -> str:
+        """Get the URL parameter name for owner ID (e.g., 'entity_id', 'location_id')."""
+        return f'{self.owner_type}_id'
+    
+    @property
+    def id_suffix(self) -> str:
+        """
+        Get the suffix to append to DIVID constants for unique element IDs.
+        
+        This creates namespaced IDs that prevent conflicts when multiple 
+        attribute editing contexts exist on the same page.
+        
+        Returns:
+            str: Suffix like '-entity-123' or '-location-456', '-subsystem''
+        """
+        if self.owner:
+            return f'-{self.owner_type}-{self.owner_id}'
+        return f'-{self.owner_type}'
+    
+    @property
+    def can_restore_default(self) -> bool:
+        """ Whether attributes for this owner type support restoring to default values """
+        return False
+
+    @property
+    def content_body_template_name(self):
+        """ This should be a template that extends attribute/components/edit_content_body.html """
+        raise NotImplementedError('Subclasses must override this method')
+    
+    @property
+    def history_url_name(self) -> str:
+        """ Should be a view that uses AttributeEditViewMixin.get_history() """
+        return f'{self.owner_type}_attribute_history_inline'
+    
+    @property
+    def restore_url_name(self) -> str:
+        """ Should be a view that uses AttributeEditViewMixin.post_restore() """
+        return f'{self.owner_type}_attribute_restore_inline'
+
+    @property
+    def restore_deleted_url_name(self) -> str:
+        return f'{self.owner_type}_attribute_restore_deleted_inline'
+    
+    @property
+    def restore_subsystem_url_name(self) -> str:
+        return f'{self.owner_type}_attribute_restore_subsystem_inline'
+    
+    @property
+    def restore_all_url_name(self) -> str:
+        return f'{self.owner_type}_attribute_restore_all_inline'
+    
+    @property
+    def container_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_CONTAINER_ID']}{self.id_suffix}"
+    
+    @property
+    def content_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_CONTENT_ID']}{self.id_suffix}"
+    
+    @property
+    def dirty_msg_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_DIRTY_MESSAGE_ID']}{self.id_suffix}"
+    
+    @property
+    def form_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_FORM_ID']}{self.id_suffix}"
+    
+    @property
+    def scrollable_content_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_SCROLLABLE_CONTENT_ID']}{self.id_suffix}"
+
+    @property
+    def status_msg_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_STATUS_MESSAGE_ID']}{self.id_suffix}"
+    
+    @property
+    def update_button_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_UPDATE_BTN_ID']}{self.id_suffix}"
+    
+    @property
+    def update_button_label(self) -> str:
+        return 'UPDATE'
+
+    @property
+    def allow_edits(self) -> bool:
+        """Whether existing attribute values may be edited and saved on
+        this surface. Drives UPDATE-button visibility (and the dirty/status
+        message stack tied to the submission flow). Independent of
+        ``can_add_custom_attributes``: a surface may permit editing
+        existing values while disallowing new attributes (e.g., config
+        settings)."""
+        return True
+
+    @property
+    def can_add_custom_attributes(self) -> bool:
+        """Whether the surface allows adding new custom attributes
+        (Add File / Add Info). Independent of ``allow_edits``."""
+        return True
+
+    @property
+    def allow_internal_attributes(self) -> bool:
+        """Whether the HI internal attribute section is rendered at all on
+        this surface. When False, the entire section (Files + Properties +
+        Deleted attributes + Add buttons) is suppressed; the section does
+        not exist. Independent of ``can_add_custom_attributes`` (which only
+        gates the Add affordance when the section IS rendered) and
+        ``allow_edits`` (which gates UPDATE-button visibility).
+
+        Used by integration-connected entities where the attribute data is
+        owned externally and HI does not present a local attribute
+        surface."""
+        return True
+
+    @property
+    def add_attribute_disabled_message(self) -> str:
+        return ''
+
+    @property
+    def externally_managed_message(self) -> str:
+        """Operator-facing notice rendered in the action bar's
+        UPDATE-button slot when the surface has no UPDATE action
+        (i.e., ``allow_edits`` is False). Returns an empty string by
+        default; owner contexts override to enable the notice. The
+        template only renders the notice when UPDATE is hidden, so an
+        owner can return a non-empty value here without worrying about
+        duplication on the normal editable surface."""
+        return ''
+
+    def to_template_context(self) -> Dict[str, Any]:
+        ctx: Dict[str, Any] = {
+            "attr_page_context": self,
+        }
+        ctx.update( self._extra_template_context )
+        return ctx
+
+    
+class AttributeItemEditContext( AttributePageEditContext ):
+    """
+    Context provider for attribute editing templates that abstracts away
+    owner-specific details (entity vs location vs future types).
+    
+    This allows templates to be completely generic while providing
+    type-safe access to owner information, URLs, and DOM identifiers.
+    """
+    
+    def __init__(self,
+                 owner                  : Model,
+                 owner_type             : str,
+                 extra_template_context : Optional[Dict]  = None ) -> None:
+        super().__init__(
+            owner_type = owner_type,
+            owner = owner,
+            extra_template_context = extra_template_context,
+        )
+        return
+        
+    @property
+    def attribute_model_subclass(self) -> Type[AttributeModel | SoftDeleteAttributeModel]:
+        raise NotImplementedError('Subclasses must override this method')
+
+    @property
+    def formset_prefix(self) -> str:
+        return f'{self.owner_type}-{self.owner.id}'
+
+    def create_owner_form( self, form_data : Optional[ Dict[str, Any] ] = None ) -> ModelForm:
+        """ Subclasses can override this if there are model properties of the owner model itself
+        that should be included in the attribute editing interface."""
+        return None
+
+    def create_attribute_model( self ) -> AttributeModel:
+        raise NotImplementedError('Subclasses must override this method')
+
+    def create_regular_attributes_formset(
+            self, form_data : Optional[ Dict[str, Any] ] = None ) -> BaseInlineFormSet:
+        """ Formset should extend BaseInlineFormSet.  (should exclude FILE attributes) """
+        raise NotImplementedError('Subclasses must override this method')
+
+    def attributes_queryset(self):
+        """ Default is that AttributeModel suibclass has 'attributes' as the related name for 
+        the owner model. """
+        return self.owner.attributes.all()
+
+    def soft_deleted_attributes_queryset(self):
+        """Return queryset with deleted attributes for this owner."""
+
+        if not self.attribute_model_subclass.supports_soft_delete:
+            return self.attribute_model_subclass.objects.none()
+
+        return self.attribute_model_subclass.deleted_objects.filter(
+            **{self.owner_type: self.owner}
+        )
+
+    @property
+    def attribute_upload_form_class(self) -> Type[AttributeUploadForm]:
+        return None
+
+    @property
+    def file_upload_url(self) -> str:
+        """ File uploads are Optional.
+        Subclasses should use a view that uses AttributeEditViewMixin.post_upload() """
+        return None
+
+    @property
+    def uses_file_uploads(self):
+        return bool( not (( self.attribute_upload_form_class is None )
+                          or self.file_upload_url is None ))
+            
+    def history_target_id(self, attribute_id: int) -> str:
+        """
+        Get the DOM ID for the attribute history container.
+        
+        Args:
+            attribute_id: The attribute's primary key
+            
+        Returns:
+            str: DOM ID for the history container
+        """
+        return f'hi-{self.owner_type}-attr-history-{self.owner_id}-{attribute_id}'
+    
+    def history_toggle_id(self, attribute_id: int) -> str:
+        """
+        Get the DOM ID for the history toggle/collapse target.
+        
+        Args:
+            attribute_id: The attribute's primary key
+            
+        Returns:
+            str: DOM ID for the history toggle target
+        """
+        return f'history-extra-{self.owner_id}-{attribute_id}'
+    
+    def file_title_field_name(self, attribute_id: int) -> str:
+        """
+        Get the form field name for file title editing.
+        
+        Args:
+            attribute_id: The attribute's primary key
+            
+        Returns:
+            str: Form field name for file title
+        """
+        return f'file_title_{self.owner_id}_{attribute_id}'
+    
+    @property
+    def file_input_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_FILE_INPUT_ID']}{self.id_suffix}"
+    
+    @property
+    def file_grid_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_FILE_GRID_ID']}{self.id_suffix}"
+    
+    @property
+    def upload_form_container_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_UPLOAD_FORM_CONTAINER_ID']}{self.id_suffix}"
+    
+    @property
+    def add_attribute_button_html_id(self) -> str:
+        return f"{DIVID['ATTR_V2_ADD_ATTRIBUTE_BTN_ID']}{self.id_suffix}"
+
+    def to_template_context(self) -> Dict[str, Any]:
+        template_context = super().to_template_context()
+        template_context.update({
+            "owner": self.owner,
+            "attr_item_context": self,
+
+            # Duplicate with explicit naming for convenience.
+            self.owner_type: self.owner,  # e.g., "entity": self.owner or "location": self.owner
+        })
+        return template_context
+    

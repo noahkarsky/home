@@ -1,0 +1,34 @@
+{% extends "modals/action_done.html" %}
+{% load icons %}
+
+{% block modal_dialog_class %}hi-modal-dialog-800{% endblock %}
+
+{% block title_text %}
+Rule Matches
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-0">
+  <div class="row mb-3">
+    <div class="col-12">
+      <h5 class="mb-0">
+        {% icon "history" color="primary" css_class="hi-icon-left" %}
+        Rule Matches
+      </h5>
+      <small class="text-muted">Recent rule matches and their details</small>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-12">
+      {% include "event/panes/event_history_list.html" with event_history_list=event_history_list today=today yesterday=yesterday %}
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-12">
+      {% include "common/panes/pagination.html" with pagination=pagination %}
+    </div>
+  </div>
+</div>
+{% endblock %}

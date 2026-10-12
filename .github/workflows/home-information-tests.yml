@@ -1,0 +1,67 @@
+# Runs Home Information's test suite from apps/home-information.
+# (Its own .github/ under the subtree is not picked up by GitHub.)
+name: Home Information Tests
+
+on:
+  push:
+    branches: [master]
+    paths: ['apps/home-information/**', 'apps/floorplan-3d/**', '.github/workflows/home-information-tests.yml']
+  pull_request:
+    paths: ['apps/home-information/**', 'apps/floorplan-3d/**', '.github/workflows/home-information-tests.yml']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DJANGO_SETTINGS_MODULE: "hi.settings.ci"
+      DJANGO_SECRET_KEY: "django-insecure-ci-only"
+      DJANGO_SUPERUSER_EMAIL: "foo@example.com"
+      DJANGO_SUPERUSER_PASSWORD: "foobar"
+      HI_REDIS_HOST: "localhost"
+      HI_REDIS_PORT: "6379"
+      HI_DB_PATH: "/tmp"
+      HI_MEDIA_PATH: "/tmp"
+
+    defaults:
+      run:
+        working-directory: apps/home-information
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ./src/hi/requirements/development.txt
+
+      - name: Run unit tests
+        working-directory: apps/home-information/src
+        run: python manage.py test
+
+      - name: Check code style
+        working-directory: apps/home-information/src
+        run: flake8 . --config=.flake8-ci
+
+      - name: Check env-var drift
+        run: bash deploy/env-drift-check.sh

@@ -1,0 +1,72 @@
+{% extends "config/pages/config_base.html" %}
+{% load icons %}
+
+{% block config_content %}
+<div class="container-fluid">
+  {% if designer_available %}
+  <div class="d-flex flex-wrap align-items-center my-2">
+    <label for="hi-floorplan3d-location" class="mr-2 mb-0">Apply plan to</label>
+    <select id="hi-floorplan3d-location" class="form-control form-control-sm mr-2" style="width:auto">
+      {% for location in location_list %}
+      <option value="{{ location.id }}">{{ location.name }}</option>
+      {% endfor %}
+      <option value="{{ new_location_id }}" {% if not location_list %}selected{% endif %}>New location...</option>
+    </select>
+    <input id="hi-floorplan3d-name" type="text" class="form-control form-control-sm mr-2" style="width:12rem"
+           value="{{ default_new_location_name }}" aria-label="New location name"
+           {% if location_list %}hidden{% endif %}>
+    <button id="hi-floorplan3d-apply" type="button" class="btn btn-primary btn-sm mr-2">
+      {% icon "upload" css_class="hi-icon-left" %}APPLY AS BACKGROUND
+    </button>
+    <a href="{% url 'floorplan3d_designer' %}" target="_blank" rel="noopener"
+       class="btn btn-tertiary btn-sm">
+      {% icon "view" css_class="hi-icon-left" %}OPEN FULL SCREEN
+    </a>
+  </div>
+  <p class="small text-muted mb-2">
+    Replacing a background keeps existing item positions, which may need moving afterwards.
+    Edits made here are saved in this browser.
+  </p>
+  <iframe id="hi-floorplan3d-frame" src="{% url 'floorplan3d_designer' %}" title="3D floor plan designer"
+          style="width:100%;height:75vh;border:1px solid #ccc;border-radius:4px"></iframe>
+
+  <script>
+  (function() {
+    var NEW_LOCATION_ID = "{{ new_location_id }}";
+    $( '#hi-floorplan3d-location' ).on( 'change', function() {
+      $( '#hi-floorplan3d-name' ).prop( 'hidden', $( this ).val() !== NEW_LOCATION_ID );
+    });
+    $( '#hi-floorplan3d-apply' ).on( 'click', function() {
+      var frame = document.getElementById( 'hi-floorplan3d-frame' );
+      var exporter = frame.contentWindow && frame.contentWindow.FloorplanExport;
+      if ( ! exporter ) {
+        alert( 'The designer has not finished loading.' );
+        return;
+      }
+      var $select = $( '#hi-floorplan3d-location' );
+      var isNew = ( $select.val() === NEW_LOCATION_ID );
+      if ( ! isNew && ! confirm( 'Replace the background of "' + $select.find( ':selected' ).text() + '"?' )) {
+        return;
+      }
+      $.post( "{% url 'floorplan3d_apply' %}", {
+        svg_content: exporter.hiSvg(),
+        location_id: $select.val(),
+        name: $( '#hi-floorplan3d-name' ).val(),
+        csrfmiddlewaretoken: "{{ csrf_token }}",
+      }).done( function( data ) {
+        window.location.href = data.redirect_url;
+      }).fail( function( xhr ) {
+        alert( 'Could not apply the floor plan (' + xhr.status + ').' );
+      });
+    });
+  })();
+  </script>
+  {% else %}
+  <div class="alert alert-warning my-3">
+    The floorplan-3d designer was not found. In the home monorepo it lives at
+    <code>apps/floorplan-3d/index.html</code>; set <code>HI_FLOORPLAN3D_HTML</code> to its path
+    if it is somewhere else.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

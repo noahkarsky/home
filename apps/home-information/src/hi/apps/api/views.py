@@ -1,0 +1,117 @@
+from datetime import datetime
+import hashlib
+import json
+import logging
+
+from django.conf import settings
+from django.core.exceptions import BadRequest
+from django.http import HttpResponse
+from django.views.generic import View
+
+from hi.apps.alert.alert_mixins import AlertMixin
+import hi.apps.common.datetimeproxy as datetimeproxy
+from hi.apps.config.settings_mixins import SettingsMixin
+from hi.apps.console.constants import ConsoleConstants
+from hi.apps.console.console_mixins import ConsoleMixin
+from hi.apps.console.transient_view_manager import TransientViewManager
+from hi.apps.monitor.status_display_manager import StatusDisplayManager
+from hi.apps.security.security_mixins import SecurityMixin
+from hi.apps.weather.weather_mixins import WeatherMixin
+from hi.testing.dev_injection import DevInjectionManager
+
+logger = logging.getLogger(__name__)
+
+
+class StatusView( View,
+                  ConsoleMixin,
+                  AlertMixin,
+                  SecurityMixin,
+                  SettingsMixin,
+                  WeatherMixin ):
+
+    ServerStartTimestampAttr = 'startTimestamp'
+    ServerTimestampAttr = 'timestamp'
+    LastServerTimestampAttr = 'lastTimestamp'
+    AlertStatusDataAttr = 'alertData'
+    EntityStateStatusMapAttr = 'entityStateStatusMap'
+    IdReplaceUpdateMapAttr = 'idReplaceUpdateMap'
+    IdReplaceHashMapAttr = 'idReplaceHashMap'
+    ConsoleLockedAttr = 'consoleLocked'
+    TransientViewSuggestionAttr = 'transientViewSuggestion'
+    TransientViewUrlAttr = 'url'
+    TransientViewDurationSecondsAttr = 'durationSeconds'
+    TransientViewPriorityAttr = 'priority'
+    TransientViewTriggerReasonAttr = 'triggerReason'
+
+    def get( self, request, *args, **kwargs ):
+
+        last_server_timestamp = request.GET.get( self.LastServerTimestampAttr )
+        last_server_datetime = None
+        if last_server_timestamp:
+            try:
+                last_server_datetime = datetime.fromisoformat(
+                    last_server_timestamp.replace("Z", "+00:00")
+                )
+            except (TypeError, ValueError):
+                msg = f'Missing or invalid date/time format "{last_server_timestamp}".'
+                logger.warning( msg )
+                raise BadRequest( msg )
+            
+        server_start_datetime = self.settings_manager().get_server_start_datetime()
+        server_datetime = datetimeproxy.now()
+
+        alert_status_data = self.alert_manager().get_alert_status_data(
+            last_alert_status_datetime = last_server_datetime,
+        )
+
+        id_replace_map = dict()
+        id_replace_map.update( self.console_manager().get_status_id_replace_map( request = request ) )
+        id_replace_map.update( self.security_manager().get_status_id_replace_map( request = request ) )
+        id_replace_map.update( self.weather_manager().get_status_id_replace_map( request = request ) )
+
+        entity_state_status_map = StatusDisplayManager().get_entity_state_status_map()
+
+        # Hash provided for client to prevent unneeded DOM updates since
+        # they can interfer with user interactions.
+        #
+        id_replace_hash_map = dict()
+        for id, html_text in id_replace_map.items():
+            encoded_string = html_text.encode('utf-8')
+            md5_hash = hashlib.md5(encoded_string)
+            id_replace_hash_map[id] = md5_hash.hexdigest()
+            continue
+        
+        # Check for transient view suggestions
+        transient_view_manager = TransientViewManager()
+        suggestion = transient_view_manager.get_current_suggestion()
+        
+        data = {
+            self.ServerStartTimestampAttr: server_start_datetime.isoformat(),
+            self.ServerTimestampAttr: server_datetime.isoformat(),
+            self.AlertStatusDataAttr: alert_status_data.to_dict( request = request ),
+            self.EntityStateStatusMapAttr: entity_state_status_map,
+            self.IdReplaceUpdateMapAttr: id_replace_map,
+            self.IdReplaceHashMapAttr: id_replace_hash_map,
+            self.ConsoleLockedAttr: request.session.get(
+                ConsoleConstants.CONSOLE_LOCKED_SESSION_VAR,
+                False,
+            ),
+        }
+        
+        if suggestion:
+            data[self.TransientViewSuggestionAttr] = {
+                self.TransientViewUrlAttr: suggestion.url,
+                self.TransientViewDurationSecondsAttr: suggestion.duration_seconds,
+                self.TransientViewPriorityAttr: suggestion.priority,
+                self.TransientViewTriggerReasonAttr: suggestion.trigger_reason
+            }
+        
+        # Development testing injection point
+        if settings.DEBUG and getattr(settings, 'DEBUG_FORCE_TRANSIENT_VIEW_OVERRIDE', False):
+            DevInjectionManager.inject_override_if_available('transient_view', data, self.TransientViewSuggestionAttr)
+        
+        return HttpResponse(
+            json.dumps(data),
+            content_type='application/json',
+            status = 200,
+        )

@@ -1,0 +1,42 @@
+{% load icons %}
+<div>
+  {% if location_list %}
+  <div class="dropdown">
+    <button class="btn btn-outline-primary btn-control dropdown-toggle" type="button"
+            id="hi-location-menu" data-toggle="dropdown">
+      {% icon "layers" css_class="hi-icon-left" %}ALL SPACES
+      <span class="caret"></span>
+    </button>
+    <div class="dropdown-menu"
+         role="menu" aria-labelledby="hi-location-menu">
+      {% for location in location_list %}
+      <a role="menuitem"
+         class="dropdown-item plain{% if location == request.view_parameters.location %} active{% endif %}"
+         href="{% url 'location_switch' location_id=location.id %}">
+        {% if location == request.view_parameters.location %}
+        {% icon "check-circle" css_class="hi-icon-left" %}
+        {% endif %}
+        {{ location.name }}
+      </a>
+      {% empty %}
+      <div class="dropdown-item alert alert-secondary text-center">
+        <em>No locations.</em>
+      </div>
+      {% endfor %}
+      {% if request.view_parameters.is_editing %}
+      <div class="dropdown-divider"></div>
+      <a role="menuitem" class="dropdown-item dropdown-item-add"
+         href="{% url 'location_edit_location_add' %}"
+         data-async="modal">
+        {% icon "plus" css_class="hi-icon-left" %}ADD NEW SPACE
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <a href="{% url 'start' %}"
+     class="btn btn-primary btn-control" role="button" >
+    START
+  </a>
+  {% endif %}
+</div>

@@ -1,0 +1,30 @@
+{% extends "modals/action_with_cancel.html" %}
+{% load icons %}
+
+{% block preamble %}
+<form action="{% url 'location_edit_svg_replace' location_id=location.id %}"
+      method="post" enctype="multipart/form-data"
+      class="form" data-async="modal">
+  {% csrf_token %}
+{% endblock %}
+
+{% block title_text %}
+Replace Space Background
+{% endblock %}
+
+{% block body %}
+<div>
+{% include "location/edit/panes/location_svg_replace_form.html" %}
+</div>
+{% endblock %}
+
+{% block action_right %}
+<button id="hi-svg-replace-button" type="submit" class="btn btn-primary"
+        name="action" value="replace">
+  {% icon "save" css_class="hi-icon-left" %}UPDATE
+</button>
+{% endblock %}
+
+{% block postamble %}
+</form>
+{% endblock %}

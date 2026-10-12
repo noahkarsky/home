@@ -1,0 +1,134 @@
+{% load icons attribute_extras %}
+{% comment %}
+V2 File Card Component
+Individual file attribute card with preview, actions, and metadata
+{% endcomment %}
+
+{% comment %}
+Lazy thumbnail generation: triggers synchronous generation on first
+view for any supported file attribute that doesn't yet have one.
+Render-time hook with no output — see ``ensure_thumbnail`` template
+tag in attribute_extras.py.
+{% endcomment %}
+{% ensure_thumbnail attribute %}
+
+<div class="{{ DIVID.ATTR_V2_FILE_CARD_CLASS }}"
+     data-attribute-id="{{ attribute.id }}"
+     data-url-detect="true"
+     data-order-index="{{ forloop.counter }}"
+     data-thumbnail-ready="{{ attribute.has_thumbnail|yesno:'true,false' }}"
+     data-preview-state="{{ attribute.preview_state }}"
+     data-mime-type="{{ attribute.file_mime_type|default:'unknown' }}"
+     data-file-size="{{ attribute.file_value.size|default:0 }}">
+  
+  <!-- Hidden field for deletion marking -->
+  <input type="hidden"
+         name="{{ DIVID.ATTR_V2_DELETE_FILE_ATTR }}"
+         value=""
+         data-attribute-id="{{ attribute.id }}">
+
+  {% comment %}
+  Per-file order_id. File attributes aren't in the regular formset,
+  so they need ad-hoc named inputs (same pattern as file_title_*).
+  The JS reorder handler swaps two cards' values in place; the
+  server processes file_order_id_* keys in process_file_order_updates.
+  {% endcomment %}
+  <input type="hidden"
+         id="file_order_id_{{ attr_item_context.owner.id }}_{{ attribute.id }}"
+         name="file_order_id_{{ attr_item_context.owner.id }}_{{ attribute.id }}"
+         value="{{ attribute.order_id }}">
+  
+  <!-- File Preview/Thumbnail Area -->
+  <div class="attr-v2-file-thumbnail{% if attribute.has_thumbnail %} has-thumbnail{% endif %}{% if attribute.file_mime_type == 'application/pdf' %} is-document{% endif %}" 
+       onclick="window.open('{{ attribute.file_value.url }}', '_blank');" 
+       title="Tap to view file">
+    {% if attribute.has_thumbnail and attribute.thumbnail_url %}
+      <img src="{{ attribute.thumbnail_url }}"
+           alt="Preview for {{ attribute.value|default:attribute.name }}"
+           class="attr-v2-file-thumbnail-image"
+           loading="lazy"
+           decoding="async">
+    {% else %}
+      {% comment %}Content-type specific placeholder icons{% endcomment %}
+      {% if attribute.file_mime_type|slice:':5' == "image" %}
+        {% icon "camera" size="lg" %}
+        <div class="attr-v2-file-type-label">IMAGE</div>
+      {% elif attribute.file_mime_type == "application/pdf" %}
+        {% icon "upload" size="lg" %}
+        <div class="attr-v2-file-type-label">PDF</div>
+      {% elif attribute.file_mime_type|slice:':4' == "text" %}
+        {% icon "edit" size="lg" %}
+        <div class="attr-v2-file-type-label">TEXT</div>
+      {% elif attribute.file_mime_type|slice:':5' == "video" %}
+        {% icon "video" size="lg" %}
+        <div class="attr-v2-file-type-label">VIDEO</div>
+      {% else %}
+        {% icon "upload" size="lg" %}
+        <div class="attr-v2-file-type-label">FILE</div>
+      {% endif %}
+    {% endif %}
+    
+  </div>
+  
+  <!-- File Info -->
+  <div class="{{ DIVID.ATTR_V2_FILE_INFO_CLASS }}">
+    <input type="text"
+           id="{{ attr_item_context|file_title_field_name:attribute.id }}"
+           name="{{ attr_item_context|file_title_field_name:attribute.id }}"
+           value="{{ attribute.value }}"
+           class="{{ DIVID.ATTR_V2_FILE_TITLE_INPUT_CLASS }}"
+           placeholder="Enter file title"
+           maxlength="255"
+           {% if not attribute.is_editable %}readonly aria-readonly="true"{% endif %}>
+    <div class="{{ DIVID.ATTR_V2_FILE_NAME_CLASS }}">{{ attribute.name }}</div>
+    
+    <!-- File Actions -->
+  <div class="attr-v2-file-actions">
+    {% comment %}
+    Reorder buttons live in the action row (not as a thumbnail
+    overlay) so they're touch-visible without hover, off the image
+    so no contrast concerns, and use the action row's
+    touch-friendly 44px minimum. ``mr-auto`` / ``ml-auto`` pushes
+    them to the edges of the row, leaving view/delete clustered in
+    the middle. Smaller icon (size="md") differentiates them
+    visually from the primary view/delete actions.
+    {% endcomment %}
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary mr-auto"
+            onclick="Hi.attr.reorderAttributeCard(this, 'up')"
+            title="Move left"
+            data-reorder-action="left">
+      {% icon "chevron-left" size="md" %}
+    </button>
+    <button type="button"
+            class="btn btn-sm btn-outline-primary"
+            onclick="window.open('{{ attribute.file_value.url }}', '_blank');"
+            title="View file">
+      {% icon "eye" size="xl" %}
+    </button>
+
+    {% if attribute.attribute_type.can_delete %}
+      <button type="button"
+              class="btn btn-sm btn-outline-danger {{ DIVID.ATTR_V2_DELETE_BTN_CLASS }}"
+              onclick="markFileForDeletion('{{ attribute.id }}', '#{{ attr_page_context.container_html_id }}')"
+              title="Delete file">
+        {% icon "delete" size="xl" %}
+      </button>
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary {{ DIVID.ATTR_V2_UNDO_BTN_CLASS }}"
+              onclick="undoFileDeletion('{{ attribute.id }}', '#{{ attr_page_context.container_html_id }}')"
+              title="Undo deletion"
+              style="display: none;">
+        Undo
+      </button>
+    {% endif %}
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary ml-auto"
+            onclick="Hi.attr.reorderAttributeCard(this, 'down')"
+            title="Move right"
+            data-reorder-action="right">
+      {% icon "chevron-right" size="md" %}
+    </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,398 @@
+from decimal import Decimal
+import os
+from typing import List
+
+from django.core.files.storage import default_storage, FileSystemStorage
+from django.db import transaction
+from django.http import HttpRequest
+from django.template.loader import render_to_string
+
+from hi.apps.common.file_utils import derive_new_unique_filename
+from hi.apps.common.singleton import Singleton
+from hi.apps.common.svg_models import SvgViewBox
+from hi.apps.common.svg_utils import process_svg_content
+from hi.apps.monitor.status_display_manager import StatusDisplayManager
+
+from .enums import LocationViewType, SvgStyleName
+from .location_view_data import LocationViewData
+from .models import (
+    Location,
+    LocationView,
+)
+
+
+class LocationManager(Singleton):
+
+    INITIAL_LOCATION_VIEW_NAME = 'All'
+
+    def __init_singleton__(self):
+        return
+
+    def get_location( self, request : HttpRequest, location_id : int ) -> Location:
+        """
+        This should always be used to fetch from the database and never using
+        the "objects" query interface. The view_parameters loads the
+        current default Location, so any out-of-band loading risks the
+        cached view_parameters version to be different from the one
+        loaded. Since so much of the app features revolve around the
+        current location, not having the default update can result in hard
+        to detect issues.
+        """
+        current_location = request.view_parameters.location
+        if current_location and ( current_location.id == int(location_id) ):
+            return current_location
+        return Location.objects.get( id = location_id )
+
+    def get_default_location( self, request : HttpRequest ) -> Location:
+        current_location = request.view_parameters.location
+        if current_location:
+            return current_location
+        location = Location.objects.order_by( 'order_id' ).first()
+        if location:
+            return location
+        raise Location.DoesNotExist()
+    
+    def create_location( self,
+                         name                   : str,
+                         svg_fragment_filename  : str,
+                         svg_fragment_content   : str,
+                         svg_viewbox            : SvgViewBox ) -> LocationView:
+
+        last_location = Location.objects.all().order_by( '-order_id' ).first()
+        if last_location:
+            order_id = last_location.order_id + 1
+        else:
+            order_id = 0
+            
+        self._ensure_directory_exists( svg_fragment_filename )
+        with default_storage.open( svg_fragment_filename, 'w') as destination:
+            destination.write( svg_fragment_content )
+        
+        with transaction.atomic():
+            location = Location.objects.create(
+                name = name,
+                svg_fragment_filename= svg_fragment_filename,
+                svg_view_box_str = str( svg_viewbox ),
+                order_id = order_id,
+            )
+            
+            _ = self.create_location_view(
+                location = location,
+                name = self.INITIAL_LOCATION_VIEW_NAME,
+            )
+            
+        return location
+    
+    def update_location_svg( self,
+                             location               : Location,
+                             svg_fragment_filename  : str,
+                             svg_fragment_content   : str,
+                             svg_viewbox            : SvgViewBox ) -> LocationView:
+
+        self._ensure_directory_exists( svg_fragment_filename )
+        with default_storage.open( svg_fragment_filename, 'w') as destination:
+            destination.write( svg_fragment_content )
+        
+        location.svg_fragment_filename = svg_fragment_filename
+        location.svg_view_box_str = str( svg_viewbox )
+        location.save()
+
+        return
+
+    def render_svg_template_to_media( self, svg_template_name ):
+        """
+        Render an SVG template, process it, and write to MEDIA_ROOT.
+        Returns the result dict from process_svg_content (includes
+        svg_fragment_filename, svg_fragment_content, svg_viewbox).
+        Does NOT update any Location model.
+        """
+        svg_content = render_to_string( svg_template_name )
+        source_filename = os.path.basename( svg_template_name )
+        result = process_svg_content(
+            svg_content = svg_content,
+            media_destination_directory = 'location/svg',
+            source_filename = source_filename,
+        )
+        self._ensure_directory_exists( result['svg_fragment_filename'] )
+        with default_storage.open( result['svg_fragment_filename'], 'w' ) as dest:
+            dest.write( result['svg_fragment_content'] )
+        return result
+
+    def update_location_svg_from_template( self, location, svg_template_name ):
+        """
+        Render an SVG template, process it, write to MEDIA_ROOT, and update
+        the Location model.
+        """
+        result = self.render_svg_template_to_media( svg_template_name )
+        self.update_location_svg(
+            location = location,
+            svg_fragment_filename = result['svg_fragment_filename'],
+            svg_fragment_content = result['svg_fragment_content'],
+            svg_viewbox = result['svg_viewbox'],
+        )
+        return result
+
+    def get_draft_svg_filename( self, location : Location ) -> str:
+        base, ext = os.path.splitext( location.svg_fragment_filename )
+        return f'{base}.draft{ext}'
+
+    def draft_svg_exists( self, location : Location ) -> bool:
+        return default_storage.exists( self.get_draft_svg_filename( location ) )
+
+    def draft_has_changes( self, location : Location ) -> bool:
+        draft_filename = self.get_draft_svg_filename( location )
+        if not default_storage.exists( draft_filename ):
+            return False
+        with default_storage.open( location.svg_fragment_filename, 'r' ) as f:
+            live_content = f.read()
+        with default_storage.open( draft_filename, 'r' ) as f:
+            draft_content = f.read()
+        return bool( live_content != draft_content )
+
+    def delete_draft_svg( self, location : Location ) -> None:
+        draft_filename = self.get_draft_svg_filename( location )
+        if default_storage.exists( draft_filename ):
+            default_storage.delete( draft_filename )
+        return
+
+    def create_draft_svg( self, location : Location ) -> str:
+        draft_filename = self.get_draft_svg_filename( location )
+        self._ensure_directory_exists( draft_filename )
+        with default_storage.open( location.svg_fragment_filename, 'r' ) as source:
+            content = source.read()
+        with default_storage.open( draft_filename, 'w' ) as dest:
+            dest.write( content )
+        return draft_filename
+
+    def save_draft_svg( self, location : Location, content : str ) -> None:
+        draft_filename = self.get_draft_svg_filename( location )
+        self._ensure_directory_exists( draft_filename )
+        with default_storage.open( draft_filename, 'w' ) as dest:
+            dest.write( content )
+        return
+
+    def commit_draft_svg( self, location : Location ) -> None:
+        draft_filename = self.get_draft_svg_filename( location )
+        with default_storage.open( draft_filename, 'r' ) as source:
+            content = source.read()
+
+        # Write to a new unique filename rather than overwriting the original.
+        # This leaves the previous version as an orphan in MEDIA_ROOT,
+        # providing a natural backup in case of accidental changes.
+        new_filename = derive_new_unique_filename( location.svg_fragment_filename )
+        self._ensure_directory_exists( new_filename )
+        with default_storage.open( new_filename, 'w' ) as dest:
+            dest.write( content )
+
+        location.svg_fragment_filename = new_filename
+        location.save()
+
+        default_storage.delete( draft_filename )
+        return
+
+    def _ensure_directory_exists( self, filepath ):
+        if isinstance( default_storage, FileSystemStorage ):
+            directory = os.path.dirname( default_storage.path( filepath ))
+
+            if not os.path.exists( directory ):
+                os.makedirs( directory, exist_ok = True )
+        return
+    
+    def create_location_view(
+            self,
+            location            : Location,
+            name                : str,
+            location_view_type  : LocationViewType  = None,
+            svg_style_name      : SvgStyleName      = None ) -> LocationView:
+
+        if location_view_type is None:
+            location_view_type = LocationViewType.default()
+        if svg_style_name is None:
+            svg_style_name = SvgStyleName.default()
+
+        last_location_view = location.views.order_by( '-order_id' ).first()
+        if last_location_view:
+            order_id = last_location_view.order_id + 1
+        else:
+            order_id = 0
+
+        resolved_name = self.resolve_unique_view_name(
+            location = location, requested_name = name,
+        )
+
+        return LocationView.objects.create(
+            location = location,
+            location_view_type_str = str(location_view_type),
+            name = resolved_name,
+            svg_style_name_str = str( svg_style_name ),
+            svg_view_box_str = str( location.svg_view_box ),
+            svg_rotate = Decimal( 0.0 ),
+            order_id = order_id,
+        )
+
+    def resolve_unique_view_name( self,
+                                  location        : Location,
+                                  requested_name  : str ) -> str:
+        """Return ``requested_name`` if no LocationView in this
+        Location uses it; otherwise append ``(2)``, ``(3)``, ... until
+        a free name is found.
+
+        LocationView.name is not unique-per-location at the DB level —
+        anyone could create duplicates by direct ORM use — so this
+        helper is the single point that all callers go through to
+        avoid surprise duplicates. Used by the dispatcher's
+        ``+ New view: "<integration label>"`` option (where the
+        operator already has a view with that name) and by the
+        manage-page Add View form (where the operator typed a
+        duplicate by accident)."""
+        existing_names = set( location.views.values_list('name', flat=True) )
+        if requested_name not in existing_names:
+            return requested_name
+        suffix = 2
+        while True:
+            candidate = f'{requested_name} ({suffix})'
+            if candidate not in existing_names:
+                return candidate
+            suffix += 1
+    
+    def get_location_view( self, request : HttpRequest, location_view_id : int ) -> LocationView:
+        """
+        This should always be used to fetch from the database and never using
+        the "objects" query interface.  The view_parameters loads the
+        current default LocationView, so any out-of-band loading risks the
+        cached view_parameters version to be different from the one
+        loaded. Since so much of the app features revolve around the
+        current location view, not having the default update can result in
+        hard to detect issues.
+        """
+        current_location_view = request.view_parameters.location_view
+        if current_location_view and ( current_location_view.id == int(location_view_id) ):
+            return current_location_view
+        return LocationView.objects.select_related('location').get( id = location_view_id )
+        
+    def get_default_location_view( self, request : HttpRequest ) -> LocationView:
+        current_location_view = request.view_parameters.location_view
+        if current_location_view:
+            return current_location_view
+
+        location = self.get_default_location( request = request )
+        if not location:
+            raise LocationView.DoesNotExist()
+                
+        location_view = location.views.order_by( 'order_id' ).first()
+        if not location_view:
+            raise LocationView.DoesNotExist()
+
+        return location_view
+
+    def get_or_create_default_location_view( self, location : Location ) -> LocationView:
+        """Return the Location's first view, creating a fresh default
+        'All' view if it has none. This is the single point that enforces
+        the invariant that every Location always has at least one
+        LocationView: LocationViewDeleteView uses it so deleting the last
+        view resets to a clean 'All' view, and LocationSwitchView uses it
+        to recover a Location left view-less by legacy data or out-of-band
+        deletes."""
+        location_view = location.views.order_by( 'order_id' ).first()
+        if location_view is None:
+            location_view = self.create_location_view(
+                location = location,
+                name = self.INITIAL_LOCATION_VIEW_NAME,
+            )
+        return location_view
+
+    def get_location_view_data( self,
+                                location_view                : LocationView,
+                                include_status_display_data  : bool ):
+
+        location = location_view.location
+        entity_positions = list()
+        entity_paths = list()
+        displayed_entities = set()
+        non_displayed_entities = set()
+        for entity_view in location_view.entity_views.select_related('entity').all():
+            entity = entity_view.entity
+            is_visible = False
+            
+            # Only collect position OR path based on EntityType, not both
+            if entity.entity_type.requires_position():
+                entity_position = entity.positions.filter( location = location ).first()
+                if entity_position:
+                    is_visible = True
+                    entity_positions.append( entity_position )
+                    displayed_entities.add( entity )
+            elif entity.entity_type.requires_path():
+                entity_path = entity.paths.filter( location = location ).first()
+                if entity_path:
+                    is_visible = True
+                    entity_paths.append( entity_path )
+                    displayed_entities.add( entity )
+            
+            if not is_visible:
+                non_displayed_entities.add( entity )
+            continue
+
+        collection_positions = list()
+        collection_paths = list()
+        unpositioned_collections = list()
+        for collection_view in location_view.collection_views.select_related('collection').all():
+            collection = collection_view.collection
+            collection_position = collection.positions.filter( location = location ).first()
+            if collection_position:
+                collection_positions.append( collection_position )
+            else:
+                unpositioned_collections.append( collection )
+            collection_path = collection.paths.filter( location = location ).first()
+            if collection_path:
+                collection_paths.append( collection_path )
+            continue
+
+        # These are used for reporting entities that might otherwise be
+        # invisible to the user.  (not displayed on SVG and nor part of any
+        # viewable collection).
+        #
+        orphan_entities = set()
+        for entity in non_displayed_entities:
+            if not entity.collections.exists():
+                orphan_entities.add( entity )
+            continue
+
+        # These become bottom buttons, which can be ordered
+        unpositioned_collections.sort( key = lambda item : item.order_id )
+
+        if include_status_display_data:
+            manager = StatusDisplayManager()
+            entity_to_entity_state_status_data_list = manager.get_entity_to_entity_state_status_data_list(
+                entities = displayed_entities,
+            )
+        else:
+            entity_to_entity_state_status_data_list = dict()
+            
+        return LocationViewData(
+            location_view = location_view,
+            entity_positions = entity_positions,
+            entity_paths = entity_paths,
+            collection_positions = collection_positions,
+            collection_paths = collection_paths,
+            unpositioned_collections = unpositioned_collections,
+            orphan_entities = orphan_entities,
+            entity_to_entity_state_status_data_list = entity_to_entity_state_status_data_list,
+        )
+
+    def set_location_view_order( self, location_view_id_list  : List[int] ):
+
+        item_id_to_idx = {
+            item_id: order_id for order_id, item_id in enumerate( location_view_id_list )
+        }
+
+        location_view_queryset = LocationView.objects.filter( id__in = location_view_id_list )
+        with transaction.atomic():
+            for location_view in location_view_queryset:
+                item_idx = item_id_to_idx.get( location_view.id )
+                order_id = 2 * ( item_idx + 1)  # Leave gaps to make one-off insertions easier
+                location_view.order_id = order_id
+                location_view.save()
+                continue
+        return
+    
+    

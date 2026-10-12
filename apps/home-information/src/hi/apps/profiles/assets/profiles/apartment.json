@@ -1,0 +1,328 @@
+{
+  "profile_name": "Apartment",
+  "description": "Generated snapshot from current database state",
+  "locations": [
+    {
+      "name": "My Home",
+      "order_id": 0,
+      "views": [
+        {
+          "name": "All",
+          "location_view_type_str": "default",
+          "svg_view_box_str": "0 0 2000 2000",
+          "svg_style_name_str": "color",
+          "svg_rotate": 0.0,
+          "order_id": 2
+        },
+        {
+          "name": "Exterior",
+          "location_view_type_str": "default",
+          "svg_view_box_str": "0 40.896860020062064 2000 1912.5205753386745",
+          "svg_style_name_str": "color",
+          "svg_rotate": 0.0,
+          "order_id": 4
+        }
+      ],
+      "svg_template_name": "profiles/svg/backgrounds/apartment-0.svg"
+    }
+  ],
+  "collections": [
+    {
+      "name": "Appliances",
+      "collection_type_str": "appliances",
+      "collection_view_type_str": "list",
+      "order_id": 2,
+      "entities": [
+        "Rice Cooker",
+        "Blender",
+        "Food Processor"
+      ],
+      "comment": "Collection with path representation",
+      "paths": [
+        {
+          "location_name": "My Home",
+          "svg_path": " M 1535.784470404117,1516.7419078975774 L 1651.3066893560863,1513.4157360225774 L 1651.9360838873363,1619.2929936326307 L 1534.6757667908357,1619.7719365037244 Z"
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Electronics",
+      "collection_type_str": "electronics",
+      "collection_view_type_str": "grid",
+      "order_id": 4,
+      "entities": [
+        "Laptop",
+        "Mobile Phone",
+        "Gaming System"
+      ],
+      "paths": [
+        {
+          "location_name": "My Home",
+          "svg_path": " M 279.93116840216385,1758.6019542842962 L 715.249255274055,1758.6018322139837 L 717.542224024055,1841.2900639451307 L 279.931198919742,1836.7042485154432 Z"
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "name": "A/V Receiver",
+      "entity_type_str": "av_receiver",
+      "comment": "Icon-positioned entities (EntityPosition) - most common case",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 344.568634,
+          "svg_y": 1080.940186,
+          "svg_scale": 1.673368
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Bathroom Sink",
+      "entity_type_str": "sink",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1288.621338,
+          "svg_y": 205.063538,
+          "svg_scale": 2.327722
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Blender",
+      "entity_type_str": "appliance",
+      "comment": "Entities that are part of collections"
+    },
+    {
+      "name": "Car",
+      "entity_type_str": "automobile",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1852.565186,
+          "svg_y": 456.639404,
+          "svg_scale": 1.330223,
+          "svg_rotate": 359.425448
+        }
+      ],
+      "visible_in_views": [
+        "Exterior"
+      ]
+    },
+    {
+      "name": "Coffee Machine",
+      "entity_type_str": "coffee_maker",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1054.647949,
+          "svg_y": 1754.944092,
+          "svg_scale": 2.99799
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Cooktop/Stove",
+      "entity_type_str": "cooktop",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1305.283203,
+          "svg_y": 1761.574463,
+          "svg_scale": 2.418551,
+          "svg_rotate": 179.907031
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Dryer",
+      "entity_type_str": "clothes_dryer",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1564.899292,
+          "svg_y": 842.380737,
+          "svg_scale": 2.397479
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Food Processor",
+      "entity_type_str": "appliance"
+    },
+    {
+      "name": "Gaming System",
+      "entity_type_str": "other"
+    },
+    {
+      "name": "Kitchen Sink",
+      "entity_type_str": "sink",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1000.171997,
+          "svg_y": 1522.862305,
+          "svg_scale": 2.48603,
+          "svg_rotate": 270.224076
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Laptop",
+      "entity_type_str": "computer"
+    },
+    {
+      "name": "Microwave",
+      "entity_type_str": "microwave_oven",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1543.670532,
+          "svg_y": 1765.032959,
+          "svg_scale": 2.208718
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Mobile Phone",
+      "entity_type_str": "other"
+    },
+    {
+      "name": "Refrigerator",
+      "entity_type_str": "refrigerator",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1592.185059,
+          "svg_y": 1387.713745,
+          "svg_scale": 3.580818
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Rice Cooker",
+      "entity_type_str": "appliance"
+    },
+    {
+      "name": "Shower",
+      "entity_type_str": "shower",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1567.708008,
+          "svg_y": 299.34079,
+          "svg_scale": 2.378895
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Television",
+      "entity_type_str": "television",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 530.237915,
+          "svg_y": 1097.506348,
+          "svg_scale": 3.494066
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Toilet",
+      "entity_type_str": "toilet",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 999.789795,
+          "svg_y": 246.871094,
+          "svg_scale": 2.733936
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Washer",
+      "entity_type_str": "clothes_washer",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1560.447021,
+          "svg_y": 608.101624,
+          "svg_scale": 2.375069
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Water Meter",
+      "entity_type_str": "water_meter",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 2206.597656,
+          "svg_y": 2803.320313,
+          "svg_scale": 2.019884
+        }
+      ],
+      "visible_in_views": [
+        "Exterior"
+      ]
+    },
+    {
+      "name": "WiFi Router",
+      "entity_type_str": "access_point",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 815.954895,
+          "svg_y": 1773.63147,
+          "svg_scale": 1.95791
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    }
+  ]
+}

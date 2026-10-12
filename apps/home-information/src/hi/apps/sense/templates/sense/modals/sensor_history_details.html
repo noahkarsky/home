@@ -1,0 +1,75 @@
+{% extends "modals/action_3.html" %}
+{% load icons %}
+{% load video_tags %}
+
+{% block title_text %}
+Sensor Response Details
+{% endblock %}
+
+{% block body %}
+<div>
+  <div class="h4">{{ sensor_history.sensor.name }}</div>
+  {% if sensor_response %}
+    {% sensor_response_event_snapshot_url sensor_response as event_snapshot_url %}
+    {% if sensor_response.has_event_video_clip %}
+      {% sensor_response_video_stream sensor_response as video_stream %}
+      {% if video_stream and video_stream.source_url %}
+      <div>
+        <div class="hi-video-clip">
+          {% if video_stream.stream_type|stringformat:"s" == "mp4" %}
+          <video class="img-fluid" data-video-clip controls autoplay muted playsinline
+                 src="{{ video_stream.source_url }}" aria-label="Sensor History"></video>
+          {% else %}
+          <img class="img-fluid" data-video-clip src="{{ video_stream.source_url }}" alt="Sensor History">
+          {% endif %}
+          {% include "console/panes/video_clip_replay_button.html" %}
+        </div>
+      </div>
+      {% elif event_snapshot_url %}
+      <!-- Fallback to image when video stream is not available -->
+      <div>
+        <img class="img-fluid" src="{{ event_snapshot_url }}" alt="Sensor History">
+      </div>
+      {% endif %}
+    {% elif event_snapshot_url %}
+    <!-- Show image when no video stream capability -->
+    <div>
+      <img class="img-fluid" src="{{ event_snapshot_url }}" alt="Sensor History">
+    </div>
+    {% endif %}
+  {% endif %}
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <tbody>
+        {% for label, value in sensor_history.detail_attrs.items %}
+        <tr>
+          <th class="text-right">{{ label }}</th>
+          <td>{{ value }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block action_left %}
+<a class="btn btn-primary"
+   href="{% url 'entity_status' entity_id=sensor_history.sensor.entity_state.entity.id %}"
+   data-async="modal">
+  {% icon "info-circle" css_class="hi-icon-left" %}STATUS
+</a>
+{% endblock %}
+
+{% block action_center %}
+<a class="btn btn-primary"
+   href="{% url 'entity_history' entity_id=sensor_history.sensor.entity_state.entity.id %}"
+   data-async="modal">
+  {% icon "history" css_class="hi-icon-left" %}HISTORY
+</a>
+{% endblock %}
+
+{% block action_right %}
+<a id="hi-modal-done" role="button" {% if autofocus %}autofocus="autofocus"{% endif %}
+   class="btn btn-primary" href="#" data-dismiss="modal">DONE</a>
+{% endblock %}

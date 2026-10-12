@@ -1,0 +1,35 @@
+{% extends "attribute/components/edit_content_body.html" %}
+{% load icons %}
+{% load attribute_extras %}
+
+{% block basic_info %}{% endblock %}
+
+{% block additional_actions %}
+{% if show_modal_cancel %}
+<a id="hi-modal-cancel" role="button" {% if autofocus %}autofocus="autofocus"{% endif %}
+   class="btn btn-outline-tertiary" href="#" data-dismiss="modal">
+  {% icon "cancel" css_class="hi-icon-left" %}CANCEL
+</a>
+{% endif %}
+
+{% comment %}
+Capability-owned action fragment. The active CapabilityGateway
+returns its own template path; the framework template stays
+capability-agnostic. Each capability's fragment renders its own
+status / lifecycle controls (CONNECT health badge, REFERENCE
+enable/disable, etc.).
+{% endcomment %}
+{% with capability_actions_template=capability_gateway.get_attribute_actions_template_name %}
+{% if capability_actions_template %}
+{% include capability_actions_template %}
+{% endif %}
+{% endwith %}
+{% endblock %}
+
+{% block tabs_nav_pane %}{% endblock %}
+
+{% block file_upload_button %}{% endblock %}
+
+{% block add_attribute_button %}{% endblock %}
+
+{% block files_section %}{% endblock %}

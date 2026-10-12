@@ -1,0 +1,999 @@
+import json
+import logging
+import os
+import re
+
+from django.core.exceptions import BadRequest
+from django.core.files.storage import default_storage
+from django.db import transaction
+from django.http import Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect
+from django.shortcuts import render
+from django.template.loader import get_template
+from django.urls import reverse
+from django.utils.decorators import method_decorator
+from django.views.generic import View
+
+from hi.apps.collection.collection_manager import CollectionManager
+from hi.apps.collection.edit.views import CollectionPositionEditView
+from hi.apps.collection.models import Collection
+import hi.apps.common.antinode as antinode
+from hi.apps.common.svg_models import SvgViewBox
+from hi.apps.common.utils import str_to_bool
+from hi.apps.entity.edit.views import EntityPositionEditView
+from hi.apps.entity.entity_manager import EntityManager
+from hi.apps.entity.entity_placement import EntityPlacer
+from hi.apps.entity.models import Entity
+from hi.apps.location.location_manager import LocationManager
+from hi.apps.location.models import Location
+from hi.apps.location.transient_models import LocationEditModeData, LocationViewEditModeData
+from hi.apps.location.view_mixins import LocationViewMixin
+
+from hi.constants import DIVID
+from hi.decorators import edit_required
+from hi.enums import ItemType, ViewType
+from hi.hi_async_view import HiModalView, HiSideView
+
+from . import forms
+from hi.apps.location.edit.view_mixins import LocationEditViewMixin
+
+logger = logging.getLogger(__name__)
+
+
+class LocationEditModeView( HiSideView, LocationViewMixin ):
+    """Location edit mode panel view - shows location properties editing interface."""
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/panes/location_edit_mode_panel.html'
+
+    def should_push_url( self ):
+        return True
+    
+    def get_template_context( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        location_edit_data = LocationEditModeData(
+            location = location,
+        )
+        return location_edit_data.to_template_context()
+    
+    def post( self, request, *args, **kwargs ):
+        return HttpResponseNotAllowed(['GET'])
+
+
+class LocationViewEditModeView( HiSideView, LocationViewMixin, LocationEditViewMixin ):
+    """
+    Location view edit mode panel view - shows location view properties
+    editing interface and handles form submission.
+    """
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/panes/location_view_edit_mode_panel.html'
+
+    def should_push_url( self ):
+        return True
+    
+    def get_template_context( self, request, *args, **kwargs ):
+        location_view = self.get_location_view( request, *args, **kwargs )
+        location_view_edit_data = LocationViewEditModeData(
+            location_view = location_view,
+        )
+        return location_view_edit_data.to_template_context()
+    
+    def post( self, request, *args, **kwargs ):
+        location_view = self.get_location_view( request, *args, **kwargs )
+        location_view_edit_form = forms.LocationViewEditForm( request.POST, instance = location_view )
+        
+        if not location_view_edit_form.is_valid():
+            location_view_edit_data = LocationViewEditModeData(
+                location_view = location_view,
+                location_view_edit_form = location_view_edit_form,
+            )
+            return self.location_view_edit_mode_response(
+                request = request,
+                location_view_edit_data = location_view_edit_data,
+                status_code = 400,
+            )
+        
+        # Location View name/order can impact many parts of UI. Full refresh is safest in this case.
+        location_view_edit_form.save()     
+        return antinode.refresh_response()
+
+
+class LocationItemEditModeView( View ):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            ( item_type, item_id ) = ItemType.parse_from_dict( kwargs )
+        except ValueError:
+            raise BadRequest( 'Bad item id.' )
+        
+        if item_type == ItemType.ENTITY:
+            redirect_url = reverse( 'entity_edit_mode', kwargs = { 'entity_id': item_id } )
+            return HttpResponseRedirect( redirect_url )
+    
+        if item_type == ItemType.COLLECTION:
+            redirect_url = reverse( 'collection_edit_mode', kwargs = { 'collection_id': item_id } )
+            return HttpResponseRedirect( redirect_url )
+
+        raise BadRequest( f'Unknown item type "{item_type}".' )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationAddView( HiModalView, LocationViewMixin ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_add.html'
+
+    def get( self, request, *args, **kwargs ):
+        context = {
+            'location_add_form': forms.LocationAddForm(),
+        }
+        return self.modal_response( request, context )
+    
+    def post( self, request, *args, **kwargs ):
+        
+        location_add_form = forms.LocationAddForm( request.POST, request.FILES )
+        if not location_add_form.is_valid():
+            context = {
+                'location_add_form': location_add_form,
+            }
+            return self.modal_response( request, context )
+
+        try:
+            location = LocationManager().create_location(
+                name = location_add_form.cleaned_data.get('name'),
+                svg_fragment_filename = location_add_form.cleaned_data.get('svg_fragment_filename'),
+                svg_fragment_content = location_add_form.cleaned_data.get('svg_fragment_content'),
+                svg_viewbox = location_add_form.cleaned_data.get('svg_viewbox'),
+            )
+        except ValueError as ve:
+            raise BadRequest( str(ve) )
+
+        location_view = location.views.order_by( 'order_id' ).first()
+        request.view_parameters.view_type = ViewType.LOCATION_VIEW
+        request.view_parameters.update_location_view( location_view )
+        request.view_parameters.to_session( request )
+
+        return self.post_create_redirect( request, location, location_view )
+
+    def post_create_redirect( self, request, location, location_view ):
+        return self.redirect_to_location_edit_side_view( location )
+
+
+class LocationAddFirstView( LocationAddView ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_add_first.html'
+
+    def post_create_redirect( self, request, location, location_view ):
+        redirect_url = reverse( 'home' )
+        return antinode.redirect_response( redirect_url )
+
+    
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgBackgroundView( HiModalView, LocationViewMixin ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_svg_background.html'
+
+    def get( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        context = { 'location': location }
+        return self.modal_response( request, context )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgReplaceView( HiModalView, LocationViewMixin ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_svg_replace.html'
+
+    def get( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+
+        context = {
+            'location': location,
+            'location_svg_file_form': forms.LocationSvgReplaceForm(),
+        }
+        return self.modal_response( request, context )
+    
+    def post( self, request, *args, **kwargs ):
+        try:
+            location_id = int( kwargs.get( 'location_id' ))
+        except (TypeError, ValueError):
+            raise BadRequest( 'Invalid location id.' )
+        try:
+            location = LocationManager().get_location(
+                request = request,
+                location_id = location_id,
+            )
+        except Location.DoesNotExist:
+            raise Http404( request )
+        
+        location_svg_file_form = forms.LocationSvgReplaceForm( request.POST, request.FILES )
+        if not location_svg_file_form.is_valid():
+            context = {
+                'location': location,
+                'location_svg_file_form': location_svg_file_form,
+            }
+            return self.modal_response( request, context )
+
+        try:
+            location = LocationManager().update_location_svg(
+                location = location,
+                svg_fragment_filename = location_svg_file_form.cleaned_data.get('svg_fragment_filename'),
+                svg_fragment_content = location_svg_file_form.cleaned_data.get('svg_fragment_content'),
+                svg_viewbox = location_svg_file_form.cleaned_data.get('svg_viewbox'),
+            )
+        except ValueError as ve:
+            raise BadRequest( str(ve) )
+
+        redirect_url = reverse('home')
+        return antinode.redirect_response( redirect_url )
+
+
+class LocationPropertiesEditView( View, LocationViewMixin, LocationEditViewMixin ):
+    """Handle location properties editing (name, order_id, svg_view_box_str) only - used by sidebar"""
+
+    def post( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+
+        location_edit_form = forms.LocationEditForm( request.POST, instance = location )
+        form_valid = location_edit_form.is_valid()
+        
+        if form_valid:
+            with transaction.atomic():
+                location_edit_form.save()
+            status_code = 200
+        else:
+            status_code = 400
+            
+        # For properties editing, we create LocationEditModeData without formset
+        location_edit_data = LocationEditModeData(
+            location = location,
+            location_edit_form = location_edit_form,
+        )
+        return self.location_properties_response(
+            request = request,
+            location_edit_data = location_edit_data,
+            status_code = status_code,
+        )
+
+    
+@method_decorator( edit_required, name='dispatch' )
+class LocationDeleteView( HiModalView, LocationViewMixin ):
+
+    LAST_LOCATION_ERROR_MSG = (
+        'This is the only space, and the app requires at least one, so it cannot be deleted.'
+    )
+    
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_delete.html'
+
+    def get(self, request, *args, **kwargs):
+        location = self.get_location( request, *args, **kwargs )
+
+        if Location.objects.count() <= 1:
+            raise BadRequest( self.LAST_LOCATION_ERROR_MSG )
+        
+        context = {
+            'location': location,
+        }
+        return self.modal_response( request, context )
+
+    def post( self, request, *args, **kwargs ):
+        try:
+            location_id = int( kwargs.get('location_id'))
+        except (TypeError, ValueError):
+            raise BadRequest( 'Invalid location id.' )
+        try:
+            location = LocationManager().get_location(
+                request = request,
+                location_id = location_id,
+            )
+        except Location.DoesNotExist:
+            raise Http404( request )
+
+        action = request.POST.get( 'action' )
+        if action != 'confirm':
+            raise BadRequest( 'Missing confirmation value.' )
+
+        # Invariant: at least one location must always exist (much of the
+        # app assumes it, and deleting the last one would strand any
+        # entities with nowhere to render). Deleting all data is an
+        # out-of-band operation, not a UI action.
+        if Location.objects.count() <= 1:
+            raise BadRequest( self.LAST_LOCATION_ERROR_MSG )
+
+        location.delete()
+
+        if request.view_parameters.location_id == location_id:
+            request.view_parameters.update_location_view( location_view = None )
+            request.view_parameters.to_session( request )
+        
+        redirect_url = reverse('home')
+        return self.redirect_response( request, redirect_url )
+
+        
+@method_decorator( edit_required, name='dispatch' )
+class LocationViewAddView( HiModalView ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_view_add.html'
+    
+    def get( self, request, *args, **kwargs ):
+        try:
+            # Ensure we have a location to add the view to.
+            location = LocationManager().get_default_location( request = request )
+        except Location.DoesNotExist:
+            raise BadRequest( 'No locations defined.' )
+        context = {
+            'location': location,
+            'location_view_add_form': forms.LocationViewAddForm(),
+        }
+        return self.modal_response( request, context )
+    
+    def post( self, request, *args, **kwargs ):
+        try:
+            current_location = LocationManager().get_default_location( request = request )
+        except Location.DoesNotExist:
+            raise BadRequest( 'No locations defined.' )
+
+        location_view_add_form = forms.LocationViewAddForm( request.POST )
+        if not location_view_add_form.is_valid():
+            context = {
+                'location_view_add_form': location_view_add_form,
+            }
+            return self.modal_response( request, context )
+        try:
+            temp_location_view = location_view_add_form.save( commit = False )
+            location_view = LocationManager().create_location_view(
+                location = current_location,
+                name = temp_location_view.name,
+                location_view_type = temp_location_view.location_view_type,
+                svg_style_name = temp_location_view.svg_style_name,
+            )
+        except ValueError as e:
+            raise BadRequest( str(e) )
+
+        request.view_parameters.view_type = ViewType.LOCATION_VIEW
+        request.view_parameters.update_location_view( location_view = location_view )
+        request.view_parameters.to_session( request )
+        
+        redirect_url = reverse('home')
+        return self.redirect_response( request, redirect_url )
+
+    
+@method_decorator( edit_required, name='dispatch' )
+class LocationViewDeleteView( HiModalView, LocationViewMixin ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_view_delete.html'
+    
+    def get(self, request, *args, **kwargs):
+        location_view = self.get_location_view( request, *args, **kwargs )
+
+        context = {
+            'location_view': location_view,
+            # Deleting a Location's only view resets it to a fresh default
+            # view rather than removing it (see post()); message that.
+            'is_last_view': bool( location_view.location.views.count() <= 1 ),
+            'default_view_name': LocationManager.INITIAL_LOCATION_VIEW_NAME,
+        }
+        return self.modal_response( request, context )
+
+    def post( self, request, *args, **kwargs ):
+        location_view = self.get_location_view( request, *args, **kwargs )
+
+        action = request.POST.get( 'action' )
+        if action != 'confirm':
+            raise BadRequest( 'Missing confirmation value.' )
+
+        location = location_view.location
+        deleted_view_id = location_view.id
+        location_view.delete()
+
+        # Invariant: every Location keeps at least one LocationView.
+        # get_or_create_default_location_view() mints a fresh default 'All'
+        # view when this was the Location's last one, so deleting the last
+        # view acts as a reset/start-over rather than stranding the
+        # Location with nothing to display.
+        replacement_view = LocationManager().get_or_create_default_location_view( location )
+
+        if request.view_parameters.location_view_id == deleted_view_id:
+            request.view_parameters.update_location_view( location_view = replacement_view )
+            request.view_parameters.to_session( request )
+
+        redirect_url = reverse('home')
+        return self.redirect_response( request, redirect_url )
+
+    
+class LocationViewGeometryView( View, LocationViewMixin, LocationEditViewMixin ):
+
+    def post(self, request, *args, **kwargs):
+        location_view = self.get_location_view( request, *args, **kwargs )
+
+        # Always remember the latest explored geometry in the session so
+        # full-reload operations (e.g. adding an entity) can preserve the
+        # user's current pan/zoom. This never touches the LocationView's
+        # stored geometry.
+        self._track_session_geometry( request )
+
+        # 'view_edit_active' is context, not instruction: it reports that
+        # the LocationView properties editor is open, which is the only
+        # case where a pan/zoom should overwrite the stored geometry. All
+        # other pan/zoom is ephemeral - the session tracking above is
+        # enough, so we are done.
+        if not str_to_bool( request.POST.get( 'view_edit_active' ) ):
+            return antinode.response( status = 200 )
+
+        location_view_geometry_form = forms.LocationViewGeometryForm( request.POST, instance = location_view )
+        if location_view_geometry_form.is_valid():
+            location_view_geometry_form.save()
+            status_code = 200
+        else:
+            # LocationViewGeometryForm is just a subset of
+            # LocationViewEditForm used when Javascript mouse/key editing
+            # causes a change to the geometry.  This could give some visual
+            # indicator to the user, but if this chag7e was successfully
+            # applied in the DOM, then the only issue would be some
+            # internal or API issue.
+            logger.warning( 'LocationView geometry form is invalid.' )
+            status_code = 400
+
+        location_view_edit_data = LocationViewEditModeData(
+            location_view = location_view,
+        )
+        return self.location_view_edit_mode_response(
+            request = request,
+            location_view_edit_data = location_view_edit_data,
+            status_code = status_code,
+        )
+
+    def _track_session_geometry( self, request ):
+        """Record the posted pan/zoom geometry in the session view
+        parameters (validated), regardless of whether it will also be
+        persisted to the LocationView. Silently ignores malformed input -
+        this is best-effort UX state, not authoritative data."""
+        svg_view_box_str = request.POST.get( 'svg_view_box_str' )
+        if not svg_view_box_str:
+            return
+        try:
+            svg_view_box = SvgViewBox.from_attribute_value( svg_view_box_str )
+        except ( ValueError, TypeError ):
+            return
+
+        svg_rotate = request.POST.get( 'svg_rotate' )
+        try:
+            float( svg_rotate )
+        except ( ValueError, TypeError ):
+            svg_rotate = None
+
+        request.view_parameters.set_last_svg_geometry(
+            svg_view_box = svg_view_box,
+            svg_rotate = svg_rotate,
+        )
+        request.view_parameters.to_session( request )
+        return
+
+    
+@method_decorator( edit_required, name='dispatch' )
+class LocationViewManageItemsView( HiSideView ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/panes/location_view_manage_items.html'
+
+    def get_template_context( self, request, *args, **kwargs ):
+        from hi.apps.edit.edit_view_helpers import EditViewHelpers
+
+        location_view = LocationManager().get_default_location_view( request = request )
+        unused_entity_ids = EditViewHelpers.get_unused_entity_ids()
+        entity_picker_data = EntityManager().create_location_entity_picker_data(
+            location_view = location_view,
+            unused_entity_ids = unused_entity_ids,
+        )
+        collection_view_group = CollectionManager().create_location_collection_view_group(
+            location_view = location_view,
+        )
+        return {
+            'location_view': location_view,
+            'entity_view_group_list': entity_picker_data.entity_view_group_list,
+            'delegate_view_item_list': entity_picker_data.delegate_view_item_list,
+            'collection_view_group': collection_view_group,
+        }
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationViewReorder( View ):
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            location_view_id_list = json.loads( kwargs.get( 'location_view_id_list' ) )
+        except Exception as e:
+            raise BadRequest( str(e) )
+
+        if not location_view_id_list:
+            raise BadRequest( 'Missing location view ids.' )
+
+        LocationManager().set_location_view_order(
+            location_view_id_list = location_view_id_list,
+        )            
+        return antinode.response( main_content = 'OK' )        
+
+    
+@method_decorator( edit_required, name='dispatch' )
+class LocationViewEntityToggleView( View, LocationViewMixin ):
+
+    def post( self, request, *args, **kwargs ):
+        location_view = self.get_location_view( request, *args, **kwargs )
+
+        try:
+            entity_id = int( kwargs.get('entity_id'))
+        except (TypeError, ValueError):
+            raise BadRequest( 'Invalid item id.' )
+        try:
+            entity = Entity.objects.get( id = entity_id )
+        except Entity.DoesNotExist:
+            raise Http404( request )
+
+        exists_in_view = EntityPlacer().toggle_entity_in_view(
+            entity = entity,
+            location_view = location_view,
+        )
+
+        # Check if entity is unused (not in any location and not in any collection)
+        from hi.apps.edit.edit_view_helpers import EditViewHelpers
+        is_unused = EditViewHelpers.is_entity_unused(entity.id)
+
+        context = {
+            'location_view': location_view,
+            'entity': entity,
+            'exists_in_view': exists_in_view,
+            'is_unused': is_unused,
+        }
+        template = get_template( 'location/edit/panes/location_view_entity_toggle.html' )
+        main_content = template.render( context, request = request )
+
+        location_view_data = LocationManager().get_location_view_data(
+            location_view = location_view,
+            include_status_display_data = bool( not request.view_parameters.is_editing ),
+        )
+        context = {
+            'location_view': location_view,
+            'location_view_data': location_view_data,
+        }
+        template = get_template( self.LOCATION_VIEW_TEMPLATE_NAME )
+        location_view_content = template.render( context, request = request )
+        
+        return antinode.response(
+            main_content = main_content,
+            insert_map = {
+                DIVID['MAIN'] : location_view_content,
+            },
+        )
+
+    
+@method_decorator( edit_required, name='dispatch' )
+class LocationViewCollectionToggleView( View, LocationViewMixin ):
+
+    def post(self, request, *args, **kwargs):
+        location_view = self.get_location_view( request, *args, **kwargs )
+
+        try:
+            collection_id = int( kwargs.get('collection_id'))
+        except (TypeError, ValueError):
+            raise BadRequest( 'Invalid collection id.' )
+        try:
+            collection = CollectionManager().get_collection(
+                request = request,
+                collection_id = collection_id,
+            )
+        except Collection.DoesNotExist:
+            raise Http404( request )
+
+        exists_in_view = CollectionManager().toggle_collection_in_view(
+            collection = collection,
+            location_view = location_view,
+        )
+
+        context = {
+            'location_view': location_view,
+            'collection': collection,
+            'exists_in_view': exists_in_view,
+        }
+        template = get_template( 'location/edit/panes/location_view_collection_toggle.html' )
+        main_content = template.render( context, request = request )
+
+        location_view_data = LocationManager().get_location_view_data(
+            location_view = location_view,
+            include_status_display_data = bool( not request.view_parameters.is_editing ),
+        )
+        context = {
+            'location_view': location_view,
+            'location_view_data': location_view_data,
+        }
+        template = get_template( self.LOCATION_VIEW_TEMPLATE_NAME )
+        location_view_content = template.render( context, request = request )
+        
+        return antinode.response(
+            main_content = main_content,
+            insert_map = {
+                DIVID['MAIN'] : location_view_content,
+            },
+        )
+
+    
+@method_decorator( edit_required, name='dispatch' )
+class LocationItemPositionView( View ):
+
+    def post(self, request, *args, **kwargs):
+        
+        try:
+            ( item_type, item_id ) = ItemType.parse_from_dict( kwargs )
+        except ValueError:
+            raise BadRequest( 'Bad item id.' )
+        
+        if item_type == ItemType.ENTITY:
+            return EntityPositionEditView().post(
+                request,
+                entity_id = item_id,
+            )
+        elif item_type == ItemType.COLLECTION:
+            return CollectionPositionEditView().post(
+                request,
+                collection_id = item_id,
+            )
+        else:
+            raise BadRequest( f'Cannot set item position for "{item_type}"' )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationItemPathView( View ):
+
+    def post(self, request, *args, **kwargs):
+        try:
+            ( item_type, item_id ) = ItemType.parse_from_dict( kwargs )
+        except ValueError:
+            raise BadRequest( 'Bad item id.' )
+
+        svg_path_str = request.POST.get('svg_path')
+        if not svg_path_str:
+            raise BadRequest( 'Missing SVG path' )
+        
+        location = LocationManager().get_default_location( request = request )
+        if item_type == ItemType.ENTITY:
+            EntityPlacer().set_entity_path(
+                entity_id = item_id,
+                location = location,
+                svg_path_str = svg_path_str,
+            )
+        elif item_type == ItemType.COLLECTION:
+            collection = CollectionManager().get_collection(
+                request = request,
+                collection_id = item_id,
+            )
+            CollectionManager().set_collection_path(
+                collection = collection,
+                location = location,
+                svg_path_str = svg_path_str,
+            )
+        else:
+            raise BadRequest( f'Cannot set SVG path for "{item_type}"' )
+
+        return antinode.response(
+            main_content = 'OK',
+        )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgEditView( View, LocationViewMixin ):
+
+    SVG_EDIT_VIEWBOX_SESSION_PREFIX = 'svg_edit_viewbox_'
+
+    def get( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        manager = LocationManager()
+
+        draft_resumed = manager.draft_has_changes( location )
+        if not manager.draft_svg_exists( location ):
+            manager.create_draft_svg( location )
+
+        session_key = f'{self.SVG_EDIT_VIEWBOX_SESSION_PREFIX}{location.id}'
+        if session_key not in request.session:
+            request.session[session_key] = location.svg_view_box_str
+        svg_view_box = SvgViewBox.from_attribute_value( request.session[session_key] )
+
+        draft_svg_filename = manager.get_draft_svg_filename( location )
+
+        context = {
+            'location': location,
+            'draft_resumed': draft_resumed,
+            'draft_svg_filename': draft_svg_filename,
+            'svg_view_box': svg_view_box,
+        }
+        return render( request, 'location/edit/pages/location_svg_edit.html', context )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgEditCancelView( HiModalView, LocationViewMixin ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_svg_edit_cancel.html'
+
+    def get( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        manager = LocationManager()
+
+        session_key = f'{LocationSvgEditView.SVG_EDIT_VIEWBOX_SESSION_PREFIX}{location.id}'
+        viewbox_changed = ( request.session.get( session_key ) != location.svg_view_box_str )
+        has_changes = manager.draft_has_changes( location ) or viewbox_changed
+
+        if not has_changes:
+            request.session.pop( session_key, None )
+            manager.delete_draft_svg( location )
+            return self.redirect_to_location_edit_side_view( location )
+
+        context = { 'location': location }
+        return self.modal_response( request, context )
+
+    def post( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        session_key = f'{LocationSvgEditView.SVG_EDIT_VIEWBOX_SESSION_PREFIX}{location.id}'
+        request.session.pop( session_key, None )
+        LocationManager().delete_draft_svg( location )
+        return self.redirect_to_location_edit_side_view( location )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgEditExitView( HiModalView, LocationViewMixin ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_svg_edit_exit.html'
+
+    def get( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        manager = LocationManager()
+
+        session_key = f'{LocationSvgEditView.SVG_EDIT_VIEWBOX_SESSION_PREFIX}{location.id}'
+        viewbox_changed = ( request.session.get( session_key ) != location.svg_view_box_str )
+        has_changes = manager.draft_has_changes( location ) or viewbox_changed
+
+        if not has_changes:
+            request.session.pop( session_key, None )
+            manager.delete_draft_svg( location )
+            return self.redirect_to_location_edit_side_view( location )
+
+        context = { 'location': location }
+        return self.modal_response( request, context )
+
+    def post( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        manager = LocationManager()
+
+        manager.commit_draft_svg( location )
+
+        session_key = f'{LocationSvgEditView.SVG_EDIT_VIEWBOX_SESSION_PREFIX}{location.id}'
+        viewbox_str = request.session.pop( session_key, None )
+        if viewbox_str:
+            location.svg_view_box_str = viewbox_str
+            location.save()
+
+        return self.redirect_to_location_edit_side_view( location )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgEditViewBoxView( View, LocationViewMixin ):
+
+    def post( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+
+        try:
+            width = float( request.POST.get( 'width', 0 ) )
+            height = float( request.POST.get( 'height', 0 ) )
+        except (TypeError, ValueError):
+            raise BadRequest( 'Invalid viewbox dimensions.' )
+
+        if width <= 0 or height <= 0:
+            raise BadRequest( 'Viewbox dimensions must be positive.' )
+
+        svg_view_box = SvgViewBox( x=0, y=0, width=width, height=height )
+        session_key = f'{LocationSvgEditView.SVG_EDIT_VIEWBOX_SESSION_PREFIX}{location.id}'
+        request.session[session_key] = str( svg_view_box )
+
+        manager = LocationManager()
+        draft_svg_filename = manager.get_draft_svg_filename( location )
+        context = {
+            'location': location,
+            'draft_svg_filename': draft_svg_filename,
+            'svg_view_box': svg_view_box,
+        }
+        template = get_template( 'location/edit/panes/location_svg_edit_canvas.html' )
+        canvas_html = template.render( context, request=request )
+        return HttpResponse( canvas_html )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgEditSaveView( View, LocationViewMixin ):
+
+    def post( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        svg_content = request.POST.get( 'svg_content', '' )
+        if not svg_content:
+            raise BadRequest( 'No SVG content provided.' )
+
+        LocationManager().save_draft_svg( location, svg_content )
+        return HttpResponse( 'OK' )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgEditExportView( View, LocationViewMixin ):
+
+    def get( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        manager = LocationManager()
+
+        draft_filename = manager.get_draft_svg_filename( location )
+        if not default_storage.exists( draft_filename ):
+            raise BadRequest( 'No draft to export.' )
+
+        with default_storage.open( draft_filename, 'r' ) as f:
+            draft_content = f.read()
+
+        session_key = f'{LocationSvgEditView.SVG_EDIT_VIEWBOX_SESSION_PREFIX}{location.id}'
+        viewbox_str = request.session.get( session_key, location.svg_view_box_str )
+
+        svg_content = (
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox_str}">\n'
+            f'{draft_content}\n'
+            '</svg>\n'
+        )
+
+        safe_name = location.name.lower().replace( ' ', '-' )
+        filename = f'background-{safe_name}.svg'
+
+        response = HttpResponse( svg_content, content_type='image/svg+xml' )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgEditRevertView( HiModalView, LocationViewMixin ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_svg_edit_revert.html'
+
+    def get( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        manager = LocationManager()
+
+        session_key = f'{LocationSvgEditView.SVG_EDIT_VIEWBOX_SESSION_PREFIX}{location.id}'
+        viewbox_changed = ( request.session.get( session_key ) != location.svg_view_box_str )
+        has_changes = manager.draft_has_changes( location ) or viewbox_changed
+
+        if not has_changes:
+            return self.modal_response(
+                request,
+                template_name='location/edit/modals/location_svg_edit_revert_no_changes.html',
+            )
+
+        context = { 'location': location }
+        return self.modal_response( request, context )
+
+    def post( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        manager = LocationManager()
+
+        manager.create_draft_svg( location )
+
+        session_key = f'{LocationSvgEditView.SVG_EDIT_VIEWBOX_SESSION_PREFIX}{location.id}'
+        request.session[session_key] = location.svg_view_box_str
+
+        redirect_url = reverse( 'location_edit_svg_edit', kwargs={ 'location_id': location.id } )
+        return antinode.redirect_response( redirect_url )
+
+
+@method_decorator( edit_required, name='dispatch' )
+class LocationSvgTemplateSelectView( HiModalView, LocationViewMixin ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_svg_template_select.html'
+
+    def get( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        templates = self._scan_templates()
+        context = {
+            'location': location,
+            'svg_templates': templates,
+        }
+        return self.modal_response( request, context )
+
+    def post( self, request, *args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        template_name = request.POST.get( 'template_name', '' )
+        if not template_name:
+            raise BadRequest( 'No template selected.' )
+
+        template_path = os.path.join(
+            forms.LocationSvgFileForm.BACKGROUNDS_TEMPLATE_DIR, template_name,
+        )
+        LocationManager().update_location_svg_from_template(
+            location = location,
+            svg_template_name = template_path,
+        )
+
+        redirect_url = reverse('home')
+        return antinode.redirect_response( redirect_url )
+
+    def _scan_templates( self ):
+        from hi.apps.profiles import apps as profiles_apps
+        template_dir = os.path.join(
+            os.path.dirname( profiles_apps.__file__ ),
+            'templates', 'profiles', 'svg', 'backgrounds',
+        )
+        templates = []
+        if not os.path.isdir( template_dir ):
+            return templates
+
+        for filename in sorted( os.listdir( template_dir ) ):
+            if not filename.endswith( '.svg' ):
+                continue
+
+            filepath = os.path.join( template_dir, filename )
+            location_name = self._read_svg_hi_name( filepath )
+            profile_name = self._derive_profile_name( filename )
+
+            if location_name and profile_name:
+                name = f'{profile_name} \u2014 {location_name}'
+            elif location_name:
+                name = location_name
+            else:
+                name = profile_name or filename
+
+            template_path = os.path.join(
+                forms.LocationSvgFileForm.BACKGROUNDS_TEMPLATE_DIR, filename,
+            )
+            templates.append({
+                'template_name': filename,
+                'template_path': template_path,
+                'name': name,
+            })
+        return templates
+
+    def _read_svg_hi_name( self, filepath ):
+        """Read the data-hi-name attribute from the SVG file."""
+        try:
+            with open( filepath, 'r' ) as f:
+                # Only need to check the first few lines
+                for _ in range( 5 ):
+                    line = f.readline()
+                    if not line:
+                        break
+                    match = re.search( r'data-hi-name="([^"]*)"', line )
+                    if match:
+                        return match.group( 1 )
+        except OSError:
+            pass
+        return None
+
+    def _derive_profile_name( self, filename ):
+        """
+        Derive a display-friendly profile name from the filename.
+        e.g., 'single_story-0.svg' -> 'Single Story',
+              'blank.svg' -> None (no profile prefix).
+        """
+        stem = filename.replace( '.svg', '' )
+        # Match profile-type prefix before the final '-N' index
+        parts = stem.rsplit( '-', 1 )
+        if len( parts ) == 2 and parts[1].isdigit():
+            return parts[0].replace( '_', ' ' ).replace( '-', ' ' ).title()
+        return None
+
+
+class LocationSvgEditHelpView( HiModalView ):
+
+    def get_template_name( self ) -> str:
+        return 'location/edit/modals/location_svg_edit_help.html'
+
+    def get( self, request, *args, **kwargs ):
+        return self.modal_response( request )
+

@@ -1,0 +1,20 @@
+{% for hidden in location_add_form.hidden_fields %}
+{{ hidden }}
+{% endfor %}
+
+{% if location_add_form.non_field_errors %}
+<div class="non-field-errors">
+  {% for err in location_add_form.non_field_errors %}
+  <p class="form-error text-danger">ERROR: {{ err }}</p>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="input-group mb-2 mr-sm-2">
+  <div class="input-group-prepend">
+    <label for="{{ location_add_form.name.id_for_label }}"
+	   class="input-group-text">{{ location_add_form.name.label }}</label>
+  </div>
+  {{ location_add_form.name }}
+  <small class="form-error text-danger">{{ location_add_form.name.errors }}</small>
+</div>

@@ -1,0 +1,33 @@
+{% extends "modals/action_done.html" %}
+
+{% block modal_dialog_class %}hi-modal-dialog-600{% endblock %}
+
+{% block title_text %}
+Current Conditions
+{% endblock %}
+
+{% block body %}
+{% if weather_conditions_data.description_long %}
+<div>{{ weather_conditions_data.description_long.value }}</div>
+{% elif weather_conditions_data.description_short %}
+<div>{{ weather_conditions_data.description_short.value }}</div>
+{% endif %}
+
+{% include "weather/panes/conditions.html" with conditions=weather_conditions_data weather_stats=weather_stats %}
+{% include "weather/panes/conditions_extended.html" with conditions=weather_conditions_data weather_stats=weather_stats %}
+
+{% with weather_conditions_data.stations as station_list %}
+{% if station_list %}
+<div class="h5">Sources</div>
+{% for station in station_list %}
+<div>
+{{ station.source.label }}
+  <ul>
+    <small>{{ station.name }} ({{ station.station_id }})</small>
+  </ul>
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+{% endblock %}

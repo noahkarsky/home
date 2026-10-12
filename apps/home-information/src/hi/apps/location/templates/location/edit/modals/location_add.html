@@ -1,0 +1,29 @@
+{% extends "modals/action_with_cancel.html" %}
+{% load icons %}
+
+{% block preamble %}
+<form action="{% url 'location_edit_location_add' %}" method="post" enctype="multipart/form-data"
+      class="form" data-async="modal">
+  {% csrf_token %}
+{% endblock %}
+
+{% block title_text %}
+New Space
+{% endblock %}
+
+{% block body %}
+<div>
+{% include "location/edit/panes/location_add_form.html" %}
+</div>
+{% endblock %}
+
+{% block action_right %}
+<button id="hi-add-location-button" type="submit" class="btn btn-primary"
+        name="action" value="add">
+  {% icon "plus" css_class="hi-icon-left" %}ADD
+</button>
+{% endblock %}
+
+{% block postamble %}
+</form>
+{% endblock %}

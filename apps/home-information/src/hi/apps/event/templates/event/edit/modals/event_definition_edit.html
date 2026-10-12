@@ -1,0 +1,32 @@
+{% extends "modals/action_with_cancel.html" %}
+{% load icons %}
+
+{% block modal_dialog_class %}hi-modal-dialog-600{% endblock %}
+
+{% block preamble %}
+<form action="{% url 'event_definition_edit' id=event_definition.id %}"
+      method="post" enctype="multipart/form-data"
+      class="form" data-async="modal">
+  {% csrf_token %}
+{% endblock %}
+
+{% block title_text %}
+Edit Rule
+{% endblock %}
+
+{% block body %}
+<div>
+{% include "event/edit/panes/event_definition_form.html" %}
+</div>
+{% endblock %}
+
+{% block action_right %}
+<button id="hi-edit-event-definition-button" type="submit" class="btn btn-primary"
+        name="action" value="edit">
+  {% icon "save" css_class="hi-icon-left" %}UPDATE
+</button>
+{% endblock %}
+
+{% block postamble %}
+</form>
+{% endblock %}

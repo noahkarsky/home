@@ -1,0 +1,113 @@
+import logging
+
+from hi.apps.alert.enums import AlarmLevel
+from hi.apps.monitor.periodic_monitor import PeriodicMonitor
+from hi.apps.system.provider_info import ProviderInfo
+
+from .constants import HbTimeouts
+from .hb_mixins import HomeBoxMixin
+
+logger = logging.getLogger(__name__)
+
+
+class HomeBoxMonitor( PeriodicMonitor, HomeBoxMixin ):
+    """
+    HomeBox does not have real-time per-item state to poll. The monitor's
+    only job is a periodic reachability/health probe so the integration's
+    health status reflects whether the API is currently reachable. Entity
+    creation/update/removal happens only via user-initiated SYNC.
+    """
+
+    MONITOR_ID = 'hi.services.homebox.monitor'
+
+    def __init__( self ):
+        super().__init__( id = self.MONITOR_ID )
+        self._was_initialized = False
+        return
+
+    def get_polling_interval_secs(self) -> int:
+        # The framework calls this at sort time (before _initialize
+        # has run ``await self.hb_manager_async()`` and cached the
+        # manager reference on this instance), and on every tick
+        # after that. Use the manager's reloaded value when the
+        # mixin's cached ``_hb_manager`` attribute exists; fall back
+        # to the static constant before then -- avoids triggering
+        # the manager mixin's sync ``ensure_initialized`` from the
+        # async event-loop thread.
+        if hasattr( self, '_hb_manager' ):
+            return self._hb_manager.polling_interval_secs
+        return HbTimeouts.POLLING_INTERVAL_SECS
+
+    def get_api_timeout(self) -> float:
+        return HbTimeouts.API_TIMEOUT_SECS
+
+    def alarm_ceiling(self):
+        # HomeBox tracks inventory data — degraded availability is
+        # informational, not safety-critical, so cap at INFO.
+        return AlarmLevel.INFO
+
+    async def _initialize(self):
+        hb_manager = await self.hb_manager_async()
+        if not hb_manager:
+            return
+        hb_manager.register_change_listener( self.refresh )
+        # See HassMonitor._initialize for the rationale behind subordinate
+        # registration: aggregated manager health pulls monitor status on
+        # demand, so a healthy reload cannot mask a failing monitor.
+        hb_manager.add_subordinate_health_status_provider( self )
+        self._was_initialized = True
+        return
+
+    def refresh( self ):
+        self._was_initialized = False
+        logger.info( 'HomeBoxMonitor refreshed - will reinitialize with new settings on next cycle' )
+        return
+
+    @classmethod
+    def get_provider_info(cls) -> ProviderInfo:
+        return ProviderInfo(
+            provider_id = cls.MONITOR_ID,
+            provider_name = 'HomeBox Monitor',
+            description = 'HomeBox integration health monitor',
+        )
+
+    async def do_work(self):
+        if not self._was_initialized:
+            await self._initialize()
+
+        if not self._was_initialized:
+            logger.warning( 'HomeBox monitor failed to initialize. Skipping work cycle.' )
+            self.record_warning( 'Was not initialized.' )
+            return
+
+        hb_manager = await self.hb_manager_async()
+        if not hb_manager:
+            self.record_error( 'No manager found.' )
+            return
+
+        try:
+            item_count = await self._check_api_reachable( hb_manager )
+        except Exception as e:
+            # The probe failed (client unavailable, upstream unreachable,
+            # bad response, etc.). Manager picks up our status via
+            # add_subordinate_health_status_provider registration — its
+            # aggregated health will reflect this WARNING the next time
+            # it is read.
+            message = f'HomeBox API probe failed: {e}'
+            logger.warning( message )
+            self.record_warning( message )
+            return
+
+        message = f'HomeBox API reachable. items={item_count}'
+        self.record_healthy( message )
+        return
+
+    async def _check_api_reachable(self, hb_manager) -> int:
+        """
+        Lightweight reachability probe: hits the items summary endpoint
+        (one API call, no per-item detail fetches) and returns the count.
+        The count is informational; the probe's purpose is to confirm
+        the API is up and authentication is still valid.
+        """
+        item_list = await hb_manager.fetch_hb_items_summary_from_api_async()
+        return len(item_list)

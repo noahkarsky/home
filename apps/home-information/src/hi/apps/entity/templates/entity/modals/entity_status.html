@@ -1,0 +1,49 @@
+{% extends "modals/action_3.html" %}
+{% load icons %}
+{% load common_tags %}
+{% load state_panel_tags %}
+{% load integration_tags %}
+
+{% block modal_dialog_class %}hi-modal-dialog-600{% endblock %}
+
+{% block title_text %}
+{{ state_panel_data.entity.name }}
+{% endblock %}
+
+{% block subheader %}
+  {% include "entity/panes/entity_modal_subheader.html" with entity=state_panel_data.entity modal_name="Status" %}
+{% endblock %}
+
+{% block body %}
+{% integration_health_banner state_panel_data.entity.integration_id "Values shown may be stale; controls may not respond." %}
+{% include_panel state_panel_data %}
+{% if state_panel_data.extras_state_data_list %}
+{% include "entity/state_panels/extras_section.html" with extras_state_data_list=state_panel_data.extras_state_data_list %}
+{% endif %}
+{% if panel_trace %}<!--
+Panel dispatch trace:
+{% for line in panel_trace %}  {{ line }}
+{% endfor %}-->
+{% endif %}
+{% endblock %}
+
+{% block action_left %}
+<a class="btn btn-primary"
+   href="{% url 'entity_edit' entity_id=state_panel_data.entity.id %}"
+   data-async="modal">
+  {% icon "info-circle" css_class="hi-icon-left" %}INFO
+</a>
+{% endblock %}
+
+{% block action_center %}
+<a class="btn btn-primary"
+   href="{% url 'entity_history' entity_id=state_panel_data.entity.id %}"
+   data-async="modal">
+  {% icon "history" css_class="hi-icon-left" %}HISTORY
+</a>
+{% endblock %}
+
+{% block action_right %}
+<a id="hi-modal-done" role="button" {% if autofocus %}autofocus="autofocus"{% endif %}
+   class="btn btn-primary" href="#" data-dismiss="modal">DONE</a>
+{% endblock %}

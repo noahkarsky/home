@@ -1,0 +1,27 @@
+{% extends "modals/action_2_with_cancel.html" %}
+{% load icons %}
+
+{% block header_class %}bg-secondary{% endblock %}
+
+{% block title_text %}
+{{ integration_data.label }}
+{% endblock %}
+
+{% block body %}
+{% include "integrations/panes/integration_modal_header.html" %}
+
+<h5 class="mb-3">Cannot configure as {{ my_label }}.</h5>
+<p>
+  {{ integration_data.label }} {{ existing_mode_clause }}
+  <strong>{{ existing_count }}</strong>
+  {% if existing_count == 1 %}item{% else %}items{% endif %}.
+  To {{ desired_action_clause }}, first {{ remediation_clause }}.
+</p>
+{% endblock %}
+
+{% block action_right %}
+<a class="btn btn-primary" role="button"
+   href="{{ link_url }}" data-async="page">
+  {% icon "chevron-right" css_class="hi-icon-left" %}{{ link_label }}
+</a>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "modals/action_done.html" %}
+{% load icons %}
+
+{% block modal_dialog_class %}hi-modal-dialog-700{% endblock %}
+
+{% block title_text %}
+Editing Help
+{% endblock %}
+
+{% block body %}
+
+<div class="editing-help-guide">
+    <div class="guide-header">
+        {% icon "edit" size="lg" color="primary" %}
+        <h5>Quick Reference Guide</h5>
+    </div>
+    
+    <div class="editing-help-categories">
+        <!-- General -->
+        <div class="help-category">
+            <div class="category-header">
+                <div class="category-icon">
+                    {% icon "move" size="sm" color="primary" %}
+                </div>
+                <h6 class="category-title">General</h6>
+            </div>
+            <ul class="help-actions">
+                <li>
+                    <span class="action-method">Click & Drag</span>
+                    <span class="action-description">Pan the view</span>
+                </li>
+                <li>
+                    <span class="action-method">Mouse Wheel / + / -</span>
+                    <span class="action-description">Zoom in/out</span>
+                </li>
+                <li>
+                    <span class="action-method">CTRL+S + Drag/Wheel</span>
+                    <span class="action-description">Scale the view</span>
+                </li>
+                <li>
+                    <span class="action-method">CTRL+R + Drag/Wheel</span>
+                    <span class="action-description">Rotate the view</span>
+                </li>
+                <li>
+                    <span class="action-method">SHIFT + Drag</span>
+                    <span class="action-description">Fine positioning (bypass snap)</span>
+                </li>
+                <li>
+                    <span class="action-method">Snap (footer)</span>
+                    <span class="action-description">Set grid size, 0 to disable</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Icon Editing -->
+        <div class="help-category">
+            <div class="category-header">
+                <div class="category-icon">
+                    {% icon "zoom" size="sm" color="primary" %}
+                </div>
+                <h6 class="category-title">Icon Editing</h6>
+            </div>
+            <ul class="help-actions">
+                <li>
+                    <span class="action-method">Click</span>
+                    <span class="action-description">Select entity</span>
+                </li>
+                <li>
+                    <span class="action-method">Drag</span>
+                    <span class="action-description">Move entity</span>
+                </li>
+                <li>
+                    <span class="action-method">S + Drag/Wheel/+/-</span>
+                    <span class="action-description">Scale entity</span>
+                </li>
+                <li>
+                    <span class="action-method">R + Drag/Wheel/+/-</span>
+                    <span class="action-description">Rotate entity</span>
+                </li>
+                <li>
+                    <span class="action-method">ESC</span>
+                    <span class="action-description">Deselect</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Path Editing -->
+        <div class="help-category help-category-wide">
+            <div class="category-header">
+                <div class="category-icon">
+                    {% icon "path" size="sm" color="primary" %}
+                </div>
+                <h6 class="category-title">Path Editing</h6>
+            </div>
+            <div class="help-actions-columns">
+                <ul class="help-actions">
+                    <li>
+                        <span class="action-method">Click Path</span>
+                        <span class="action-description">Select path to edit vertices</span>
+                    </li>
+                    <li>
+                        <span class="action-method">Click Canvas</span>
+                        <span class="action-description">Extend path (add vertex)</span>
+                    </li>
+                    <li>
+                        <span class="action-method">Drag Point</span>
+                        <span class="action-description">Move single vertex</span>
+                    </li>
+                    <li>
+                        <span class="action-method">CTRL + Drag</span>
+                        <span class="action-description">Move entire path</span>
+                    </li>
+                </ul>
+                <ul class="help-actions">
+                    <li>
+                        <span class="action-method">I / INSERT</span>
+                        <span class="action-description">Insert vertex</span>
+                    </li>
+                    <li>
+                        <span class="action-method">X / DEL</span>
+                        <span class="action-description">Delete vertex</span>
+                    </li>
+                    <li>
+                        <span class="action-method">A / +</span>
+                        <span class="action-description">Add new segment</span>
+                    </li>
+                    <li>
+                        <span class="action-method">ESC</span>
+                        <span class="action-description">Finish path editing</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="help-note">
+        <div class="note-header">
+            {% icon "info-circle" size="sm" color="secondary" %}
+            <h6 class="note-title">Important Note</h6>
+        </div>
+        <p class="note-content">
+            View pan/zoom/rotate changes are only saved when the "View" editing pane is showing.
+        </p>
+    </div>
+</div>
+
+{% endblock %}
