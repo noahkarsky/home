@@ -1,0 +1,52 @@
+{% extends "config/pages/config_base.html" %}
+{% load icons static %}
+
+{% block config_content %}
+<div class="container py-3">
+
+  <h2 class="mb-3">Data Import</h2>
+
+  <div class="row">
+    {% for row in rows %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+      <div class="card h-100 text-center">
+        <div class="card-body d-flex flex-column">
+          <img src="{% static row.integration_data.integration_metadata.logo_static_path %}"
+               alt="{{ row.integration_data.integration_metadata.label }}"
+               class="img-fluid hi-integration-logo--card mx-auto mb-3">
+          <h5 class="card-title mb-1">{{ row.integration_data.integration_metadata.label }}</h5>
+          {% if row.is_dual_capability %}
+          <a href="{% url 'integrations_import_info' %}"
+             data-async="modal"
+             title="What's the difference?"
+             class="d-block text-muted small text-decoration-none mb-3">
+            Also available as a Connector.
+            {% icon "info-circle" %}
+          </a>
+          {% endif %}
+          <div class="mt-auto pt-2">
+            <a href="{% url 'integrations_import_configure' integration_id=row.integration_data.integration_id %}"
+               class="btn btn-primary btn-block" role="button" data-async="modal">
+              {% icon "settings" css_class="hi-icon-left" %}CONFIGURE
+            </a>
+            {% if row.has_imported %}
+            <a href="{% url 'integrations_import_discard' integration_id=row.integration_data.integration_id %}"
+               role="button" class="btn btn-outline-danger btn-block mt-2" data-async="modal">
+              {% icon "delete" css_class="hi-icon-left" %}DISCARD
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+      <div class="alert alert-info">
+        No data importers currently defined.
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

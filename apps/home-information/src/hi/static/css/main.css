@@ -1,0 +1,2688 @@
+/*  Home Information
+    Copyright 2024-2026 by POMDP, LLC
+    All Rights Reserved.  
+*/
+:root {
+  --white: #fdfdfd;
+  --black: #020204;
+  --primary-color: #177072;
+  --on-primary-color: #ffffff;
+  --primary-highlight-color: #115354;
+  --secondary-color: #F45F36;
+  --on-secondary-color: #ffffff;
+  --secondary-highlight-color: #F8AD98;
+  --tertiary-color: #020204;
+  --on-tertiary-color: #ffffff;
+  --tertiary-highlight-color: #7e7e81;
+  --success-color: #177219;
+  --info-color: #177072;
+  --on-success-color: #ffffff;
+  --success-bg-light: #e8f5e8;
+  --warning-color: #ECA500;
+  --on-warning-color: #ffffff;
+  --error-color: #721817;
+  --on-error-color: #ffffff;
+  --error-highlight-color: #a01111;
+  --danger-color: var(--error-color);
+  --muted-color: #7e7e81;
+  --on-muted-color: #ffffff;
+  --line-color: #cccccc;
+
+  --edit-primary-bg-color: #dffeff;
+  --edit-secondary-bg-color: #ffd0c3;
+  --edit-tertiary-bg-color: #f0f0f0;
+
+  /* Add missing semantic background variants */
+  --warning-bg-light: #fef7e6;
+  --info-bg-light: #e8f4f4;
+  --muted-bg-light: #f8f9fa;
+
+  /* Edit Mode Variables (for global edit mode styling) */
+  --edit-mode-primary-bg: #FAD4C8;    /* Side panel background */
+  --edit-mode-secondary-bg: #F5E6E1;  /* Main screen background */
+  --edit-mode-tertiary-bg: #F5E6E1;   /* Top/bottom backgrounds */
+  --edit-mode-border-color: #C65D3C;  /* Border color */
+  --edit-mode-dash-color: #A94A32;    /* Dashed line color */
+  --edit-hr-color: #a0a0a0;
+  
+  --top-buttons-height: 2.5rem;
+  --bottom-buttons-height: 2.5rem;
+
+  --status-highlighted-color: red;
+  --status-hover-color: blue;
+
+  --status-off-color: #aaaaaa;
+  --status-on-color: yellow;
+  --on-status-off-color: black;
+  --on-status-on-color: black;
+  
+  /* These should match those in hi.apps.monitor.StatusStyle */
+  --status-active-color: #DC3545;
+  --status-recent-color: #FD7E14;
+  --status-past-color: #FFD700;
+  --status-ok-color: #177219;
+  --status-bad-color: #a01111;
+  --status-idle-color: #aaaaaa;
+
+  --on-status-active-color: white;
+  --on-status-recent-color: white;
+  --on-status-past-color: black;
+  --on-status-ok-color: white;
+  --on-status-bad-color: white;
+  --on-status-idle-color: black;
+
+  /* Temperature ramp: blue (cold) -> green (pleasant) -> orange/red (hot).
+     These should match those in hi.hi_styles.StatusStyle (STATUS_TEMP_*). */
+  --status-temp-cold-color: #2c7fb8;
+  --status-temp-cool-color: #74add1;
+  --status-temp-pleasant-color: #1a9850;
+  --status-temp-warm-color: #fdae61;
+  --status-temp-hot-color: #d73027;
+
+  --on-status-temp-cold-color: white;
+  --on-status-temp-cool-color: black;
+  --on-status-temp-pleasant-color: white;
+  --on-status-temp-warm-color: black;
+  --on-status-temp-hot-color: white;
+
+  /* Panel size budgets. Soft enforcement: collection wrappers reference
+     these via auto-fit/minmax for adaptive column counts; panels
+     reference them when their content scales with the budget.
+     See docs/dev/frontend/entity-state-panels.md. */
+  --hi-panel-tile-min-size: 240px;
+  --hi-panel-tile-target-size: 280px;
+  --hi-panel-tile-max-size: 360px;
+  --hi-panel-tile-large-min-size: 380px;
+  --hi-panel-tile-small-min-size: 120px;
+  --hi-panel-row-min-height: 56px;
+  --hi-panel-row-target-height: 80px;
+  --hi-panel-row-max-height: 128px;
+  --hi-panel-default-tile-min-size: 160px;
+
+  /* Ceiling for a video-pane image/clip's rendered height. Landscape
+     cameras stay well under this (so they fill width as before); portrait
+     cameras are clamped here and letterboxed via object-fit so they fit
+     on screen instead of overflowing to ~2x the height. The two named
+     tokens are the menu of sizes; --hi-video-max-height is the active one,
+     defaulting to standard and re-pointed to compact by .hi-video-compact. */
+  --hi-video-max-height-standard: 60vh;
+  --hi-video-max-height-compact: 40vh;
+  --hi-video-max-height: var(--hi-video-max-height-standard);
+
+  /* Ceiling for the hi_grid side panel width. Its content is designed for
+     a narrow column and looks sparse past this, so on wide screens the
+     side clamps here and MAIN reclaims the freed width. A no-op on
+     small/medium screens, where the Bootstrap col-3 (25%) is already
+     narrower than this. */
+  --hi-side-max-width: 375px;
+
+  /* Letterbox/backdrop fill behind a video that doesn't fill its container
+     (e.g. a portrait clip in a landscape pane). A very dark, lightly
+     teal-tinted neutral — softer than pure black and cohesive with
+     --primary-color (#177072) — so the frame recedes without being stark. */
+  --hi-video-letterbox-bg: #13201f;
+
+}
+
+html, body {
+    font-size: 1rem;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    color: #222233;
+    background-color: var(--white);
+}
+
+a { color: var(--primary-color); }
+a:hover,
+a:focus,
+a:active {
+    opacity: 0.65;
+    color: var(--primary-color);
+}
+a.plain {
+    text-decoration: none;
+    cursor: pointer;
+    border-bottom: 0;
+}
+a.underline,
+a.underline:visited {
+    text-decoration: none;
+    padding-bottom: 0.075rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+a.clickable-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+a.clickable-card:hover,
+a.clickable-card:focus,
+a.clickable-card:active {
+    text-decoration: none;
+    opacity: 0.75;
+}
+
+/* Home profile selection styles */
+.profile-selection-container {
+  display: flex;
+  justify-content: center;
+  gap: clamp(1rem, 3vw, 4rem);
+  margin: clamp(1rem, 3vh, 2rem) 0;
+  flex-wrap: wrap;
+}
+
+.profile-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(1rem, 2vh, 2.5rem) clamp(1.5rem, 3vw, 3rem) clamp(0.5rem, 1vh, 1.5rem);
+  border: 2px solid var(--line-color);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  background: white;
+  min-width: clamp(120px, 15vw, 220px);
+  flex: 0 1 auto;
+}
+
+.profile-button:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(23, 112, 114, 0.2);
+  text-decoration: none;
+  color: inherit;
+}
+
+.profile-icon {
+  width: clamp(60px, 8vw, 160px);
+  height: clamp(60px, 8vw, 160px);
+  max-width: 100%;
+  margin-bottom: clamp(0.5rem, 1vh, 0.75rem);
+}
+
+.profile-label {
+  font-size: clamp(0.875rem, 2vw, 1rem);
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--tertiary-color);
+}
+
+/* Start empty layout link */
+.start-empty-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.start-empty-link:hover {
+  color: var(--primary-color);
+  text-decoration: none;
+  border-bottom-color: var(--primary-color);
+}
+
+.empty-layout-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+.text-secondary {
+    color: var(--secondary-color) !important;
+}
+.text-on-primary {
+    color: var(--on-primary-color) !important;
+}
+.text-white {
+    color: var(--white) !important;
+}
+.text-black {
+    color: var(--black);
+}
+
+.bg-primary, .bg-info, .btn-primary, .btn-info {
+    color: var(--on-primary-color) !important;
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-highlight-color) !important;
+}
+.bg-primary a, .bg-info a, .btn-primary a, .btn-info a {
+    color: var(--on-primary-color);
+}
+.bg-primary a:hover,
+.bg-primary a:focus,
+.bg-primary a:active,
+.bg-info a:hover,
+.bg-info a:focus,
+.bg-info a:active {
+    opacity: 0.65;
+    color: var(--on-primary-color);
+}
+
+.bg-secondary, .btn-secondary, .badge-secondary {
+    color: var(--on-secondary-color) !important;
+    background-color: var(--secondary-color) !important;
+    border-color: var(--secondary-highlight-color) !important;
+}
+.bg-secondary a {
+    color: var(--on-secondary-color);
+}
+.bg-secondary a:hover,
+.bg-secondary a:focus,
+.bg-secondary a:active {
+    opacity: 0.65;
+    color: var(--on-secondary-color);
+}
+
+.bg-tertiary, .btn-tertiary {
+    color: var(--on-tertiary-color) !important;
+    background-color: var(--tertiary-color) !important;
+    border-color: var(--tertiary-highlight-color) !important;
+}
+.bg-tertiary a {
+    color: var(--on-tertiary-color);
+}
+.bg-tertiary a:hover,
+.bg-tertiary a:focus,
+.bg-tertiary a:active {
+    opacity: 0.65;
+    color: var(--on-tertiary-color);
+}
+
+/* Bootstrap doesn't ship an .alert-tertiary variant, so the weather   */
+/* alerts banner falls back to no background when AlertSeverity.UNKNOWN */
+/* maps the severity to "tertiary" (real NWS alerts routinely carry    */
+/* severity = "Unknown" on advisory products like Special Weather       */
+/* Statements). Filling the gap with neutral-grey tinted-bg styling    */
+/* matching the visual rhythm of the other alert variants -- soft      */
+/* enough to signal "no specific severity" rather than the heavier     */
+/* near-black ``bg-tertiary`` treatment.                                */
+.alert-tertiary {
+    color: #383d41;
+    background-color: #e2e3e5;
+    border-color: #d6d8db;
+}
+
+.bg-danger, .btn-error, .btn-danger {
+    color: var(--on-error-color) !important;
+    background-color: var(--error-color) !important;
+    border-color: var(--error-highlight-color) !important;
+}
+.bg-danger a, .btn-error a, .btn-danger a {
+    color: var(--on-error-color);
+}
+.bg-error a:hover,
+.bg-error a:focus,
+.bg-error a:active,
+.bg-danger a:hover,
+.bg-danger a:focus,
+.bg-danger a:active {
+    opacity: 0.65;
+    color: var(--on-error-color);
+}
+
+.bg-muted, .btn-muted {
+    color: var(--on-muted-color) !important;
+    background-color: var(--muted-color) !important;
+}
+
+/* Add-action button. Reusable treatment for "create new X"             */
+/* affordances. Dashed border + the edit-mode warm color: dashed is     */
+/* the long-standing UX convention for "this slot is awaiting           */
+/* content", and reusing the edit-mode dash color makes these buttons   */
+/* visually cluster with the dashed bar borders that mark edit-mode    */
+/* chrome. Differentiates from primary (nav), secondary (active        */
+/* state), and tertiary (settings) so an "add" stands out at a         */
+/* glance.                                                              */
+.btn-add {
+    color: var(--edit-mode-dash-color) !important;
+    /* Light translucent warm fill rather than fully transparent. The   */
+    /* edit-mode bar background is itself a warm tone, so a transparent */
+    /* dashed button would be warm-on-warm with minimal contrast. The   */
+    /* translucent chip gives the button presence as a discrete slot    */
+    /* while preserving the dashed-create vocabulary.                    */
+    background-color: rgba(169, 74, 50, 0.08) !important;
+    border: 2px dashed var(--edit-mode-dash-color) !important;
+}
+.btn-add:hover,
+.btn-add:focus,
+.btn-add:active,
+.btn-add.active {
+    color: var(--edit-mode-dash-color) !important;
+    background-color: rgba(169, 74, 50, 0.18) !important;
+    border-color: var(--edit-mode-border-color) !important;
+}
+.btn-add:focus {
+    box-shadow: 0 0 0 0.2rem rgba(169, 74, 50, 0.25) !important;
+}
+
+/* Outline Button Overrides */
+.btn-outline-primary {
+    color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    background-color: transparent !important;
+}
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:active,
+.btn-outline-primary.active {
+    color: var(--on-primary-color) !important;
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-highlight-color) !important;
+}
+.btn-outline-primary:focus {
+    box-shadow: 0 0 0 0.2rem rgba(23, 112, 114, 0.25) !important;
+}
+
+.btn-outline-secondary {
+    color: var(--secondary-color) !important;
+    border-color: var(--secondary-color) !important;
+    background-color: transparent !important;
+}
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus,
+.btn-outline-secondary:active,
+.btn-outline-secondary.active {
+    color: var(--on-secondary-color) !important;
+    background-color: var(--secondary-color) !important;
+    border-color: var(--secondary-highlight-color) !important;
+}
+.btn-outline-secondary:focus {
+    box-shadow: 0 0 0 0.2rem rgba(244, 95, 54, 0.25) !important;
+}
+
+.btn-outline-tertiary {
+    color: var(--tertiary-color) !important;
+    border-color: var(--tertiary-highlight-color) !important;
+    background-color: var(--muted-bg-light) !important;
+}
+.btn-outline-tertiary:hover,
+.btn-outline-tertiary:focus,
+.btn-outline-tertiary:active,
+.btn-outline-tertiary.active {
+    color: var(--on-tertiary-color) !important;
+    background-color: var(--tertiary-color) !important;
+    border-color: var(--tertiary-highlight-color) !important;
+}
+.btn-outline-tertiary:focus {
+    box-shadow: 0 0 0 0.2rem rgba(244, 95, 54, 0.25) !important;
+}
+
+.btn-outline-danger {
+    color: var(--error-color) !important;
+    border-color: var(--error-color) !important;
+    background-color: transparent !important;
+}
+.btn-outline-danger:hover,
+.btn-outline-danger:focus,
+.btn-outline-danger:active,
+.btn-outline-danger.active {
+    color: var(--on-error-color) !important;
+    background-color: var(--error-color) !important;
+    border-color: var(--error-highlight-color) !important;
+}
+.btn-outline-danger:focus {
+    box-shadow: 0 0 0 0.2rem var(--error-highlight-color) !important;
+}
+
+.interstitial-page {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    max-width: 1200px;
+    margin: auto;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.interstitial-body {
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid #ccc;
+    background-color: #f4f4f4;
+}
+
+/* Phone Landscape (Side-by-Side) */
+@media (min-aspect-ratio: 16/9) and (max-height: 600px) {
+    .interstitial-page {
+        flex-direction: row;
+        gap: 2rem;
+    }
+    .interstitial-header {
+        flex: 0 0 auto;
+        padding: 0.5rem;
+    }
+    .interstitial-body {
+        flex: 1;
+        display: flex;
+        align-items: center;
+    }
+}
+
+#hi-top-content {
+    height: calc( var(--top-buttons-height) - 1 );
+    border-bottom: 1px solid var(--line-color);
+}
+#hi-bottom-content {
+    height: var(--bottom-buttons-height);
+    border-top: 1px solid var(--line-color);
+}
+#hi-top-content img,
+#hi-bottom-content img {
+    max-height: 2rem;
+    width: auto;
+}
+
+/* Top/bottom button bars. The right (and top-center logo) groups        */
+/* reserve their content width so the fixed app-nav controls are never   */
+/* pushed off-screen by a long list of user-defined view buttons. The    */
+/* left group takes the remaining width and scrolls horizontally on      */
+/* overflow.                                                             */
+.hi-button-bar {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+.hi-button-bar-fixed,
+.hi-button-bar-center {
+    flex: 0 0 auto;
+}
+.hi-button-bar-flex {
+    flex: 1 1 auto;
+    /* Override flexbox's default min-width:auto so this group can       */
+    /* actually shrink below its children's intrinsic widths.            */
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+.hi-button-bar-flex > * {
+    flex-shrink: 0;
+}
+
+/* Edit-mode sidebar tab strip. Three tabs (Items / View / Space) act  */
+/* as visual chrome over the existing per-template side views: each    */
+/* tab is just an antinode link to a different side-panel URL. The     */
+/* "active" class is hardcoded into the loaded template, so there's    */
+/* no client-side tab state.                                            */
+.hi-edit-sidebar-tabs {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--line-color);
+    /* Keep top-level domain switcher visible while the pane content    */
+    /* scrolls underneath. Bg matches whichever wrapper bg the sidebar  */
+    /* is showing (white in items mode, warm in detail modes) so the    */
+    /* scrolled content can't bleed through.                            */
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: var(--edit-mode-primary-bg);
+}
+.hi-edit-sidebar-tab {
+    flex: 1 1 0;
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+}
+.hi-edit-sidebar-tab:hover {
+    text-decoration: none;
+    background-color: rgba(23, 112, 114, 0.05);
+}
+.hi-edit-sidebar-tab.active {
+    color: var(--edit-mode-dash-color);
+    border-bottom-color: var(--edit-mode-dash-color);
+    background-color: var(--edit-mode-tertiary-bg);
+}
+.hi-edit-sidebar-tab.disabled {
+    color: #aaa;
+    pointer-events: none;
+    cursor: default;
+}
+.hi-edit-sidebar-content {
+    padding: 0.5rem;
+}
+
+/* Items-list mode: the entity rows carry status-based background      */
+/* shading (in-view / unused) and integration logos authored on        */
+/* white, so the edit-mode sidebar tint is overridden to white when    */
+/* the items list template is loaded. ``:has()`` lets the parent       */
+/* react to which child template was rendered without JS coordination, */
+/* so the white extends edge-to-edge -- no scroll edge cases.           */
+.hi-screen[hi-edit="True"] #hi-side-content:has(.entity-picker-container) {
+    background: var(--white);
+}
+
+/* Touch-target utility. Apply alongside any visual treatment           */
+/* (typically Bootstrap ``small``/``text-muted``) to give a small      */
+/* text affordance the iOS-HIG 44px tap floor without changing how    */
+/* it looks. Use anywhere a glyph-light link or icon needs to remain   */
+/* finger-friendly on a wall-mounted tablet.                            */
+.hi-tap-target {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+}
+.hi-side {
+    padding-left: 0;
+    padding-right: 0;
+    /* Clamp to min(col-3 25%, --hi-side-max-width): the cap only engages
+       on wide screens; below it the 25% flex-basis governs unchanged.
+       Paired with .scrollable-column flex-grow so MAIN reclaims the gap. */
+    max-width: var(--hi-side-max-width);
+}
+#hi-side-content {
+    height: calc(100vh - var(--top-buttons-height) - var(--bottom-buttons-height));
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+#hi-side-content hr {
+    flex: 0 0 auto; /* Prevent shrinking or growing */
+    width: 100%;
+}
+#hi-top-content,
+#hi-bottom-content,
+.hi-screen {
+    background: var(--white);
+}
+
+/* Edit Mode Styling - Warm color scheme with dashed borders */
+#hi-top-content[hi-edit="True"] {
+    background: var(--edit-mode-tertiary-bg);
+    border-bottom: 4px dashed var(--edit-mode-dash-color);
+    box-shadow: inset 0 -2px 8px rgba(212, 119, 94, 0.1);
+}
+
+#hi-bottom-content[hi-edit="True"] {
+    background: var(--edit-mode-tertiary-bg);
+    border-top: 4px dashed var(--edit-mode-dash-color);
+    box-shadow: inset 0 2px 8px rgba(212, 119, 94, 0.1);
+}
+
+.hi-screen[hi-edit="True"] {
+    background: linear-gradient(135deg, var(--edit-mode-secondary-bg) 0%, var(--white) 50%, var(--edit-mode-secondary-bg) 100%);
+    box-shadow: inset 0 0 0 3px var(--edit-mode-secondary-bg);
+    position: relative;
+}
+
+/* Side panel styling in edit mode */
+.hi-screen[hi-edit="True"] #hi-side-content {
+    background: var(--edit-mode-primary-bg);
+    border-left: 4px dashed var(--edit-mode-dash-color);
+}
+
+.hi-screen {
+    max-height: 100vh;
+}
+.scrollable-column {
+    overflow-y: auto;
+    max-height: 100vh;
+    padding-top: var(--top-buttons-height);
+    padding-bottom: var(--bottom-buttons-height);
+    /* Grow past the col-9 75% to absorb the width freed when .hi-side is
+       clamped on wide screens; no free space exists below the clamp, so
+       this is a no-op there. */
+    flex-grow: 1;
+    max-width: none;
+}
+.fixed-column {
+    overflow-y: auto;
+    flex-shrink: 0;
+    height: 100vh;
+    max-height: 100vh;
+    padding-top: var(--top-buttons-height);
+    padding-bottom: var(--bottom-buttons-height);
+    border-left: 1px solid var(--line-color);
+}
+
+.hi-modal-dialog-600 {
+    max-width: 600px;
+}
+.hi-modal-dialog-700 {
+    max-width: 700px;
+}
+.hi-modal-dialog-800 {
+    max-width: 800px;
+}
+
+.modal-title-image img {
+    max-height: 48px;
+}
+.modal-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+
+
+/* General Vertical Tab Styling */
+.hi-vertical-nav {
+    min-width: 200px;
+    border-right: 1px solid var(--line-color);
+    padding: 1rem 0;
+}
+
+.hi-vertical-nav-header {
+    padding: 0 1rem 1rem 1rem;
+    border-bottom: 1px solid var(--line-color);
+    margin-bottom: 0.5rem;
+}
+
+.hi-vertical-nav-link {
+    display: block;
+    padding: 0.75rem 1rem;
+    margin: 0.25rem 0;
+    border-radius: 0;
+    color: #495057;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    min-height: 44px; /* Touch-friendly */
+    display: flex;
+    align-items: center;
+}
+
+.hi-vertical-nav-link:hover {
+    background-color: #f8f9fa;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.hi-vertical-nav-link:focus {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.hi-vertical-nav-link.active {
+    background-color: var(--primary-color);
+    color: var(--on-primary-color);
+}
+
+.hi-vertical-nav-link.active:hover {
+    background-color: var(--primary-highlight-color);
+    color: var(--on-primary-color);
+}
+
+/* Responsive adjustments for vertical tabs */
+@media (max-width: 767.98px) {
+    .hi-vertical-nav {
+        min-width: 150px;
+    }
+}
+
+
+/* Pagination styling overrides for app theming */
+.pagination-lg .page-link {
+    color: var(--primary-color) !important;
+    border-color: #dee2e6 !important;
+    /* Force consistent height for all pagination buttons */
+    height: 3rem !important;
+    min-height: 3rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.5rem 0.75rem !important;
+    box-sizing: border-box !important;
+    line-height: 1.2 !important;
+}
+
+/* Ensure spans inside page-links don't affect height and are properly centered */
+.pagination-lg .page-link span {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100% !important;
+}
+
+.pagination-lg .page-link:hover {
+    color: var(--primary-highlight-color) !important;
+    background-color: #e9ecef !important;
+    border-color: #dee2e6 !important;
+}
+
+.pagination-lg .page-item.active .page-link {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--on-primary-color) !important;
+}
+
+.pagination-lg .page-item.disabled .page-link {
+    color: #6c757d !important;
+    background-color: #fff !important;
+    border-color: #dee2e6 !important;
+}
+
+
+.btn-control {
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+input[type="number"] {
+    max-width: 8rem;
+}
+.hi-location-view {
+    justify-content: center;
+    align-items: center;
+    height: calc(100vh - var(--top-buttons-height) - var(--bottom-buttons-height) );
+    touch-action: none;
+
+}
+.hi-location-view-svg {
+    max-height: calc(100vh - var(--top-buttons-height) - var(--bottom-buttons-height) ); 
+    width: auto;
+    height: auto;
+    display: block;
+    cursor: pointer;
+}    
+
+.integration-title img {
+    height: 2rem;
+}
+
+#hi-integration-settings nav {
+    border-right: 1px solid #888888;
+    height: calc( 100vh - var(--top-buttons-height) - var(--bottom-buttons-height) - 6rem);
+    overflow-y: auto;
+}
+#hi-integration-settings nav hr {
+    flex: 0 0 auto; /* Prevent shrinking or growing */
+    width: 100%;
+    border-top: 1px solid #202020;
+}
+.drag-over {
+  border: 2px dashed #888888;
+}
+
+.form-group label {
+    color: #060606 !important;
+}
+.input-group-text {
+    color: var(--black);
+    background-color: #f0f0f0;
+}
+select,
+textarea,
+input[type="text"],
+input[type="password"],
+.dropdown-menu {
+    color: var(--black) !important;
+    background-color: #f8f8f8 !important;
+}
+
+/* Location switcher dropdown items: touch-friendly heights and a       */
+/* visible current-space marker (check icon + bold) so the user can    */
+/* see which space they're on at a glance.                              */
+.dropdown-item.plain {
+    padding: 0.6rem 1rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+}
+.dropdown-item.plain.active {
+    background-color: transparent;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+.dropdown-item.plain.active:hover,
+.dropdown-item.plain.active:focus {
+    background-color: rgba(23, 112, 114, 0.05);
+    color: var(--primary-color);
+}
+
+/* ADD NEW SPACE: same btn-add vocabulary as other "add" affordances   */
+/* (top-bar ADD VIEW / ADD COLLECTION, entity-picker ADD NEW ITEM),    */
+/* but at a lower visual weight appropriate to its dropdown context —  */
+/* this is a secondary action accessed from a navigation menu, not a   */
+/* primary CTA. ``box-sizing: border-box`` + a horizontal margin keep  */
+/* the chip inset from the menu edges without pushing past the menu's  */
+/* right border.                                                        */
+.dropdown-item-add {
+    box-sizing: border-box;
+    width: calc(100% - 1rem);
+    margin: 0.25rem 0.5rem;
+    padding: 0.35rem 0.75rem !important;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--edit-mode-dash-color);
+    border-radius: 0.25rem;
+    color: var(--edit-mode-dash-color) !important;
+    background-color: rgba(169, 74, 50, 0.06) !important;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.dropdown-item-add:hover,
+.dropdown-item-add:focus {
+    background-color: rgba(169, 74, 50, 0.16) !important;
+    border-color: var(--edit-mode-border-color) !important;
+    color: var(--edit-mode-dash-color) !important;
+}
+.hi-custom-select .input-group-text {
+    height: calc(1.5em + 0.75rem + 2px);
+    line-height: 1.5;
+}
+#hi-server-error-msg {
+    position: fixed;
+    display: none;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1060;
+    padding: 2rem 3rem;
+    min-width: 22rem;
+    text-align: center;
+    color: var(--on-secondary-color);
+    background-color: var(--secondary-color);
+    border-radius: 0.8rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.35);
+}
+#hi-server-error-msg .icon {
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 1rem;
+}
+#hi-server-error-msg .msg {
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+svg[action-state="move"] {
+    cursor: move;
+}
+svg[action-state="rotate"] {
+    cursor: url('/static/css/cursor-rotate.png') 16 16, auto;
+}
+svg[action-state="scale"] {
+    cursor: url('/static/css/cursor-scale.png') 16 16, auto;
+}
+
+svg .highlighted {
+    filter: drop-shadow(0 0 10px var(--status-highlighted-color));
+}
+
+g.hi-icon {
+    pointer-events: all;
+    touch-action: manipulation;
+    /* Suppress iOS Safari's callout (Copy/Define popup) and
+       text-selection behaviors on the 750ms touch-hold the
+       long-press gesture uses. ``touch-action: manipulation``
+       governs gesture interpretation but not callouts/selection. */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+}
+
+/* Hide background rectangles used for click targets */
+.hi-entity-bg {
+    fill: none !important;
+    stroke: none !important;
+    opacity: 0;
+    pointer-events: all;
+}
+
+path.hi-path-closed[hover] {
+}
+path.hover-target {
+    stroke: none;
+    stroke-width: 10;
+    fill: none;
+    pointer-events: all;
+}
+path.hi-path-closed[hover] {
+    stroke: var(--status-hover-color);
+    stroke-width: 4;
+}
+path.hover-target[hover] + path.hi-path-open {
+    stroke: var(--status-hover-color);
+    stroke-width: 5;
+    filter: drop-shadow(0 0 5px var(--status-hover-color));
+}
+
+g[status="active"] {
+    filter: drop-shadow(0 0 5px var(--status-active-color));
+}
+g[status="recent"] {
+    filter: drop-shadow(0 0 5px var(--status-recent-color));
+}
+g[status="partial"] {
+    filter: drop-shadow(0 0 5px var(--status-recent-color));
+}
+g[status="past"] {
+    filter: drop-shadow(0 0 5px var(--status-past-color));
+}
+
+g[status="off"] path.hi-state-bg  {
+    fill: var(--status-off-color);
+}
+/* Base for every status-display chip. MUST precede the specific
+ * .hi-status-display[status="..."] rules below: they share its
+ * specificity (class + one attribute), so they only override it by
+ * source order. Previously this sat after on/off/dim and silently
+ * clobbered them. */
+.hi-status-display[status] {
+    display: inline-block;
+    color: var(--black);
+    background-color: var(--white);
+    border: 1px solid var(--black);
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 0.9em;
+    line-height: 1.4;
+    width: 10em;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+.hi-status-display[status="off"] {
+    color: var(--on-status-off-color);
+    background-color: var(--status-off-color);
+}
+g[status="on"] {
+    filter: drop-shadow(0 0 5px var(--status-on-color));
+}
+g[status="on"] path.hi-state-bg {
+    fill: var(--status-on-color);
+}
+/* Fan icons: spin the blades while "on" as a live state cue alongside the
+ * on-glow. We rotate the blade path(s) -- NOT the placed <g> wrapper, whose
+ * transform attribute carries the icon's position/scale (a CSS transform on
+ * it would override that and move the icon). transform-box: fill-box pivots
+ * relative to the path's own bounding box. */
+@keyframes hi-fan-spin {
+    to { transform: rotate( 360deg ); }
+}
+@media (prefers-reduced-motion: no-preference) {
+    /* Ceiling fan: blades are their own path. The top blade reaches higher
+     * than the bottom blades reach low, so the bbox center sits ~4% above
+     * the hub -- nudge the y origin down to match. Eyeball-tune the second
+     * value (try 52-56%) if it still wobbles. */
+    g[status="on"] path.hi-entity-ceiling-fan-blades {
+        transform-box: fill-box;
+        transform-origin: 50% 54%;
+        animation: hi-fan-spin 3s linear infinite;
+    }
+    /* Exhaust fan: blades, outer ring and center hub share one path, but the
+     * ring and hub are circular so only the blades read as moving. The
+     * dominant circular ring keeps the bbox centered on the true axis, so
+     * plain center works without a tuned offset. */
+    g[status="on"] path.hi-entity-exhaust-fan-lines {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: hi-fan-spin 3s linear infinite;
+    }
+}
+.hi-status-display[status="on"] {
+    color: var(--on-status-on-color);
+    background-color: var(--status-on-color);
+}
+g[status="dim"] {
+    /* Smaller blur than "on" so the glow reads as less intense.
+     * The opacity for the fill is handled on the .hi-state-bg path
+     * below (via fill-opacity) so the SVG outline stays solid. */
+    filter: drop-shadow(0 0 3px var(--status-on-color));
+}
+g[status="dim"] path.hi-state-bg {
+    fill: var(--status-on-color);
+    fill-opacity: 0.5;
+}
+.hi-status-display[status="dim"] {
+    color: var(--on-status-on-color);
+    background-color: var(--status-on-color);
+    opacity: 0.5;
+}
+
+g[status="open"] {
+    filter: drop-shadow(0 0 5px var(--status-bad-color));
+}
+g[status="connected"] {
+    filter: drop-shadow(0 0 5px var(--status-ok-color));
+}
+g[status="disconnected"] {
+    filter: drop-shadow(0 0 5px var(--status-bad-color));
+}
+g[status="degraded"] {
+    filter: drop-shadow(0 0 5px var(--status-recent-color));
+}
+.hi-status-display[status="raid_ok"],
+.hi-status-display[status="connected"] {
+    color: var(--on-status-ok-color);
+    background-color: var(--status-ok-color);
+}
+.hi-status-display[status="printing"],
+.hi-status-display[status="degraded"] {
+    color: var(--on-status-recent-color);
+    background-color: var(--status-recent-color);
+}
+.hi-status-display[status="stopped"],
+.hi-status-display[status="failed"],
+.hi-status-display[status="disconnected"] {
+    color: var(--on-status-bad-color);
+    background-color: var(--status-bad-color);
+}
+.hi-status-display[status="idle"],
+.hi-status-display[status="ok"],
+.hi-status-display[status="high"] {
+    color: var(--on-status-ok-color);
+    background-color: var(--status-ok-color);
+}
+.hi-status-display[status="low"] {
+    color: var(--on-status-bad-color);
+    background-color: var(--status-bad-color);
+}
+.hi-status-display[status="smoke_clear"] {
+    color: var(--on-status-ok-color);
+    background-color: var(--status-ok-color);
+}
+.hi-status-display[status="smoke_detected"] {
+    color: var(--on-status-bad-color);
+    background-color: var(--status-bad-color);
+}
+.hi-status-display[status="moisture_clear"] {
+    color: var(--on-status-ok-color);
+    background-color: var(--status-ok-color);
+}
+.hi-status-display[status="moisture_detected"] {
+    color: var(--on-status-bad-color);
+    background-color: var(--status-bad-color);
+}
+.hi-status-display[status="co_clear"] {
+    color: var(--on-status-ok-color);
+    background-color: var(--status-ok-color);
+}
+.hi-status-display[status="co_detected"] {
+    color: var(--on-status-bad-color);
+    background-color: var(--status-bad-color);
+}
+.hi-status-display[status="gas_clear"] {
+    color: var(--on-status-ok-color);
+    background-color: var(--status-ok-color);
+}
+.hi-status-display[status="gas_detected"] {
+    color: var(--on-status-bad-color);
+    background-color: var(--status-bad-color);
+}
+.hi-status-display[status="object_person"],
+.hi-status-display[status="object_car"],
+.hi-status-display[status="object_animal"],
+.hi-status-display[status="object_package"],
+.hi-status-display[status="object_other"] {
+    color: var(--on-status-active-color);
+    background-color: var(--status-active-color);
+}
+.hi-status-display[status="object_none"] {
+    color: var(--on-status-ok-color);
+    background-color: var(--status-ok-color);
+}
+.hi-status-display[status="temperature_cold"] {
+    color: var(--on-status-temp-cold-color);
+    background-color: var(--status-temp-cold-color);
+}
+.hi-status-display[status="temperature_cool"] {
+    color: var(--on-status-temp-cool-color);
+    background-color: var(--status-temp-cool-color);
+}
+.hi-status-display[status="temperature_pleasant"] {
+    color: var(--on-status-temp-pleasant-color);
+    background-color: var(--status-temp-pleasant-color);
+}
+.hi-status-display[status="temperature_warm"] {
+    color: var(--on-status-temp-warm-color);
+    background-color: var(--status-temp-warm-color);
+}
+.hi-status-display[status="temperature_hot"] {
+    color: var(--on-status-temp-hot-color);
+    background-color: var(--status-temp-hot-color);
+}
+
+g[hover] {
+    filter: drop-shadow(0 0 10px var(--status-hover-color)) !important;
+}
+
+.display-only-svg-icon {
+    width: 2rem;
+    height: auto;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 24px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+.switch input:checked + .slider {
+    background-color: var(--success-color);
+}
+.switch input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+#hi-alert-banner-container {
+}
+.hi-alarm-level-info {
+    color: var(--on-success-color);
+    background-color: var(--success-color);
+}
+
+.hi-alarm-level-warning {
+    color: var(--on-warning-color);
+    background-color: var(--warning-color);
+}
+
+.hi-alarm-level-critical {
+    color: var(--on-error-color);
+    background-color: var(--error-color);
+}
+
+#hi-sleep-overlay {
+    position: fixed;
+    display: none;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+}
+
+.scroll-container {
+    overflow-x: auto;
+    white-space: nowrap;
+    adding-bottom: 10px;
+}
+
+.row.flex-nowrap {
+    flex-wrap: nowrap;
+}
+.weather-forecast-daily-col {
+    min-width: 100px;
+}
+
+.details-popup-wrapper {
+  position: relative;
+}
+.details-popup-summary {
+  cursor: pointer;
+}
+.details-popup-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 1em;
+  width: 100%;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+/* Getting Started Guide Styles */
+.getting-started-sidebar {
+    background: var(--white);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid var(--line-color);
+}
+
+.getting-started-guide {
+    /* Content styles - with background and padding for when used without sidebar container */
+    background: var(--white);
+    border-radius: 0.5rem;
+}
+
+.getting-started-guide .guide-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--line-color);
+}
+
+.getting-started-guide .guide-header .hi-icon {
+    margin-right: 0.5rem;
+}
+
+.getting-started-guide .guide-header h5 {
+    margin: 0;
+    color: var(--black);
+    font-weight: 600;
+}
+
+.getting-started-guide .mode-explanation {
+    background: var(--info-bg-light);
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--primary-color);
+    border: 1px solid rgba(23, 112, 114, 0.3);
+}
+
+.getting-started-guide .mode-explanation .badge {
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.getting-started-guide .steps {
+    margin-bottom: 1rem;
+}
+
+.getting-started-guide .step {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line-color);
+}
+
+.getting-started-guide .step:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.getting-started-guide .step-number {
+    background: var(--primary-color);
+    color: var(--on-primary-color);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.getting-started-guide .step-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.getting-started-guide .step-content strong {
+    color: var(--black);
+    font-size: 0.9rem;
+}
+
+.getting-started-guide .step-content .small {
+    color: var(--muted-color);
+    margin-top: 0.25rem;
+    line-height: 1.3;
+}
+.getting-started-guide a:not(.plain) {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+.getting-started-guide a:not(.plain):hover {
+    color: var(--primary-highlight-color);
+}
+
+.getting-started-guide .help-hint {
+    display: flex;
+    align-items: center;
+    background: var(--muted-bg-light);
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--line-color);
+}
+
+.getting-started-guide .help-hint .hi-icon {
+    margin-right: 0.5rem;
+}
+
+.getting-started-guide .help-hint small {
+    color: var(--muted-color);
+}
+
+/* ================================= */
+/* Editing Help Modal Styles        */
+/* ================================= */
+
+.editing-help-guide {
+    font-size: 0.9rem;
+}
+
+.editing-help-guide .guide-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--line-color);
+}
+
+.editing-help-guide .guide-header h5 {
+    margin: 0;
+    color: var(--black);
+    font-weight: 600;
+}
+
+.editing-help-categories {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.editing-help-guide .help-category {
+    background: var(--white);
+    border: 1px solid var(--line-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: all 0.2s ease;
+}
+
+.editing-help-guide .help-category:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+}
+
+.editing-help-guide .category-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--muted-bg-light);
+}
+
+.editing-help-guide .category-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--info-bg-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.editing-help-guide .category-title {
+    font-weight: 600;
+    margin: 0;
+    color: var(--black);
+    font-size: 1rem;
+}
+
+.editing-help-guide .help-category-wide {
+    grid-column: 1 / -1;
+}
+
+.editing-help-guide .help-actions-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+}
+
+.editing-help-guide .help-actions {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.editing-help-guide .help-actions li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--muted-bg-light);
+}
+
+.editing-help-guide .help-actions li:last-child {
+    border-bottom: none;
+}
+
+.editing-help-guide .action-method {
+    font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    background: var(--muted-bg-light);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--primary-highlight-color);
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.editing-help-guide .action-description {
+    flex: 1;
+    color: var(--muted-color);
+    font-size: 0.85rem;
+}
+
+.editing-help-guide .help-note {
+    padding: 1rem;
+    background: var(--warning-bg-light);
+    border-radius: 0.5rem;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.editing-help-guide .note-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.editing-help-guide .note-title {
+    font-weight: 600;
+    color: var(--black);
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.editing-help-guide .note-content {
+    margin: 0;
+    color: var(--muted-color);
+    font-size: 0.9rem;
+}
+
+/* Responsive behavior for smaller modals */
+@media (max-width: 768px) {
+    .editing-help-guide .editing-help-categories {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+/* Monitor Health Status Styles */
+.hi-modal-dialog-800 {
+    max-width: 800px;
+}
+
+.monitor-status-badge {
+    font-size: 1.1rem;
+    padding: 0.5rem 1rem;
+}
+
+.monitor-status-healthy {
+    background-color: var(--success-color);
+    color: var(--on-success-color);
+}
+
+.monitor-status-warning {
+    background-color: var(--warning-color);
+    color: var(--on-warning-color);
+}
+
+.monitor-status-error {
+    background-color: var(--error-color);
+    color: var(--on-error-color);
+}
+
+/*
+ * Health status badge — used by system/panes/health_status_badge.html
+ * for the expanded button view. One class per HealthStatusType value.
+ */
+.hi-health-badge-healthy {
+    background-color: var(--success-color);
+    color: var(--on-success-color);
+    border-color: var(--success-color);
+}
+.hi-health-badge-warning {
+    background-color: var(--warning-color);
+    color: var(--on-warning-color);
+    border-color: var(--warning-color);
+}
+.hi-health-badge-error {
+    background-color: var(--error-color);
+    color: var(--on-error-color);
+    border-color: var(--error-color);
+}
+.hi-health-badge-disabled {
+    background-color: var(--muted-color);
+    color: var(--on-muted-color, #fff);
+    border-color: var(--muted-color);
+}
+.hi-health-badge-unknown {
+    background-color: transparent;
+    color: var(--muted-color);
+    border-color: var(--muted-color);
+}
+
+/*
+ * Compact integration-status indicator — used by integrations/panes/
+ * integration_status_indicator.html for the sidebar nav-tab. Icon-only,
+ * color drawn from semantic CSS variables. paused is informational
+ * (muted), warning/error draw attention.
+ */
+.hi-integration-indicator {
+    margin-left: 0.4rem;
+    line-height: 1;
+}
+.hi-integration-indicator-error {
+    color: var(--error-color);
+}
+.hi-integration-indicator-warning {
+    color: var(--warning-color);
+}
+.hi-integration-indicator-paused {
+    color: var(--muted-color);
+}
+.hi-integration-indicator-needs-sync {
+    color: var(--info-color);
+}
+
+.text-success-custom {
+    color: var(--success-color);
+}
+
+.text-warning-custom {
+    color: var(--warning-color);
+}
+
+.text-error-custom {
+    color: var(--error-color);
+}
+
+.text-muted-custom {
+    color: var(--muted-color);
+}
+
+.heartbeat-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.heartbeat-healthy {
+    background-color: var(--success-color);
+    animation: heartbeat-pulse 2s infinite;
+}
+
+.heartbeat-stale {
+    background-color: var(--warning-color);
+}
+
+.heartbeat-dead {
+    background-color: var(--error-color);
+}
+
+@keyframes heartbeat-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.border-healthy { border-color: var(--success-color); }
+.border-warning { border-color: var(--warning-color); }
+.border-info { border-color: var(--info-color); }
+.border-error { border-color: var(--error-color); }
+.border-muted { border-color: var(--muted-color); }
+.border-unknown { border-color: var(--muted-color); }
+
+.api-source-section {
+    border-left: 3px solid var(--line-color);
+    padding-left: 1rem;
+    margin-left: 0.5rem;
+}
+
+.api-source-healthy { border-left-color: var(--success-color); }
+.api-source-warning { border-left-color: var(--warning-color); }
+.api-source-info { border-left-color: var(--info-color); }
+.api-source-error { border-left-color: var(--error-color); }
+.api-source-muted { border-left-color: var(--muted-color); }
+.api-source-unknown { border-left-color: var(--muted-color); }
+
+.api-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.metric-item {
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    border-left: 3px solid var(--line-color);
+}
+
+.metric-item.success {
+    border-left-color: var(--success-color);
+}
+
+.metric-item.warning {
+    border-left-color: var(--warning-color);
+}
+
+.metric-item.error {
+    border-left-color: var(--error-color);
+}
+
+.metric-item.muted {
+    border-left-color: var(--muted-color);
+}
+
+.metric-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* ================================================
+   PWA-specific styles for full screen mode
+   ================================================ */
+
+/* Fullscreen mode styles when app is installed as PWA */
+@media all and (display-mode: fullscreen) {
+    body {
+        /* Remove any default margins/padding that might appear */
+        margin: 0;
+        padding: 0;
+        /* Ensure content uses full viewport */
+        min-height: 100vh;
+        /* Prevent overscroll bounce on iOS */
+        overscroll-behavior: none;
+    }
+
+    /* Hide browser UI elements that might still be visible */
+    .browser-ui-hint {
+        display: none;
+    }
+}
+
+/* Standalone mode styles (iOS Safari, Chrome mobile) */
+@media all and (display-mode: standalone) {
+    body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        overscroll-behavior: none;
+        /* Add safe area padding for devices with notches */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+
+    /* Adjust main content area for safe areas */
+    .container-fluid {
+        padding-left: max(15px, env(safe-area-inset-left));
+        padding-right: max(15px, env(safe-area-inset-right));
+    }
+}
+
+/* Landscape orientation optimizations (tablet primary use case) */
+@media (orientation: landscape) and ((display-mode: fullscreen) or (display-mode: standalone)) {
+    /* Optimize layout for landscape orientation */
+    .row {
+        /* Ensure full width usage in landscape */
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    /* Tablet-specific touch optimizations */
+    button, .btn, .form-control, select {
+        /* Ensure touch targets are at least 44px (Apple HIG) */
+        min-height: 44px;
+        /* Add more comfortable padding for touch */
+        padding: 10px 16px;
+    }
+
+    /* Optimize modal dialogs for landscape */
+    .modal-dialog {
+        max-width: 80vw;
+        margin: 2vh auto;
+    }
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    /* Ensure crisp icons and graphics on retina displays */
+    img, svg {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* PWA installation prompt hiding (when app is already installed) */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+    .pwa-install-prompt {
+        display: none !important;
+    }
+}
+
+/* Entity Picker Styles. The container/panel wrappers are structural    */
+/* only (they exist for ``:has()`` detection and for template parity   */
+/* with downstream JS that may key off them). Sidebar background and   */
+/* gutters live one layer up: ``#hi-side-content`` paints the white,   */
+/* ``.hi-edit-sidebar-content`` owns the padding. Nothing here.        */
+
+.entity-picker-header {
+    background: var(--muted-bg-light);
+    border-bottom: 1px solid var(--line-color);
+    padding: 0.5rem;
+    /* Stick below the sidebar tabs strip when scrolling. ``top`` is    */
+    /* an approximation of the tabs' rendered height; both elements'    */
+    /* z-index lets the tabs sit above this if values drift.            */
+    position: sticky;
+    top: 2.5rem;
+    z-index: 10;
+}
+
+.entity-search-input {
+    border-radius: 6px;
+    border: 1px solid var(--line-color);
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.filter-toggles {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.entity-filter-btn {
+    padding: 4px 12px;
+    border: 1px solid var(--primary-color);
+    background: var(--white);
+    color: var(--primary-color);
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.entity-filter-btn.active {
+    background: var(--primary-color);
+    color: var(--on-primary-color);
+}
+
+.entity-filter-btn:hover {
+    background: var(--info-bg-light);
+}
+
+.entity-filter-btn.active:hover {
+    background: var(--primary-highlight-color);
+}
+
+.entity-picker-items {
+    /* No styling -- gutter is owned by .hi-edit-sidebar-content one    */
+    /* layer up. Kept as a class hook for JS / template parity.         */
+}
+
+.entity-group-section {
+    margin-bottom: 0.75rem;
+}
+
+.entity-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line-color);
+    margin-bottom: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.entity-group-title {
+    font-weight: 600;
+    color: var(--tertiary-color);
+    font-size: 14px;
+    flex-grow: 1;
+}
+
+.entity-group-toggle {
+    color: var(--muted-color);
+    font-size: 12px;
+    transition: transform 0.2s;
+}
+
+.entity-group-header[aria-expanded="false"] .entity-group-toggle {
+    transform: rotate(-90deg);
+}
+
+.entity-group-items {
+    margin-left: 8px;
+}
+
+.entity-item-row,
+.collection-item-row {
+    padding: 6px 0;
+    margin-bottom: 2px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.entity-item-row form,
+.collection-item-row form {
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+
+.entity-item-row:hover,
+.collection-item-row:hover {
+    background: var(--muted-bg-light);
+}
+
+.entity-item-row.in-view,
+.collection-item-row.in-view {
+    background: var(--success-bg-light);
+    border-left: 3px solid var(--primary-color);
+    padding-left: 5px;
+}
+
+.entity-item-row.in-view:hover,
+.collection-item-row.in-view:hover {
+    background: var(--primary-color);
+    color: var(--on-primary-color);
+}
+
+.entity-item-row.unused,
+.collection-item-row.unused {
+    border-left: 3px solid var(--warning-color);
+    background: var(--warning-bg-light);
+    padding-left: 5px;
+}
+
+.entity-item-row.unused:hover,
+.collection-item-row.unused:hover {
+    background: var(--secondary-highlight-color);
+}
+
+.entity-item-checkbox {
+    margin-right: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.entity-item-label {
+    font-size: 14px;
+    cursor: pointer;
+    flex-grow: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.entity-item-id {
+    font-size: 11px;
+    color: var(--muted-color);
+    margin-left: 6px;
+}
+
+/* Entity picker search clear button alignment */
+.entity-search-clear {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.search-container .input-group-append {
+    display: flex;
+    align-items: stretch;
+}
+
+.search-container .input-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.unused-indicator {
+    color: var(--warning-color);
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Entity picker filter button grid layout */
+.filter-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.filter-toggles .entity-filter-btn {
+    flex: 1 1 45%;
+    min-width: 0; /* Allow text truncation if needed */
+}
+
+/* ================================================================ */
+/* Collection layouts                                               */
+/* ================================================================ */
+/* Three per-CollectionViewType wrappers; column counts come from   */
+/* CSS auto-fit + minmax referencing the panel size budgets.        */
+
+.collection-tile-grid,
+.collection-default {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 1rem;
+}
+.collection-tile-grid {
+    grid-template-columns: repeat(
+        auto-fit, minmax(var(--hi-panel-tile-min-size), 1fr)
+    );
+}
+/* GRID_LARGE bumps the minimum tile size so each tile gets more
+ * pixels; column count still adapts to container width (2 on
+ * tablet, 3 on standard desktop, 4 on wide desktop). Used when
+ * panel content benefits from larger presentation — camera streams,
+ * dial-heavy panels, etc.
+ */
+.collection-tile-grid--large {
+    grid-template-columns: repeat(
+        auto-fit, minmax(var(--hi-panel-tile-large-min-size), 1fr)
+    );
+}
+/* GRID_SMALL halves the minimum tile size so roughly twice as many
+ * columns fit in the same container. Used for collections where
+ * many simple panels (binary status, single value) benefit from a
+ * denser layout. Cards also get a halved min-height so the aspect
+ * ratio stays comparable to GRID rather than going tall-and-narrow.
+ */
+.collection-tile-grid--small {
+    grid-template-columns: repeat(
+        auto-fit, minmax(var(--hi-panel-tile-small-min-size), 1fr)
+    );
+}
+.collection-tile-grid--small .entity-card--tile {
+    min-height: var(--hi-panel-tile-small-min-size);
+}
+/* Sensor value chips inside the SMALL grid: the universal chip width
+ * (10em) overflows the narrower cells produced by
+ * --hi-panel-tile-small-min-size, so values truncate at the right edge.
+ * Scoping by the wrapper class keeps this shrinkage isolated — GRID,
+ * GRID_LARGE, LIST, and modal contexts continue to use the universal
+ * chip metrics defined in .hi-status-display[status]. */
+.collection-tile-grid--small .hi-status-display[status] {
+    width: 8em;
+    font-size: 0.8em;
+    padding: 1px 6px;
+}
+.collection-default {
+    grid-template-columns: repeat(
+        auto-fit, minmax(var(--hi-panel-default-tile-min-size), 1fr)
+    );
+}
+
+.collection-row-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 1rem;
+    /* Establish a container query context so ROW-context panels can
+       use @container to adapt to actual content width (immune to
+       sidebar / layout-chrome width that @media viewport queries
+       cannot account for). */
+    container-type: inline-size;
+    container-name: collection-row;
+}
+
+/* ================================================================ */
+/* Entity card wrapper                                              */
+/* ================================================================ */
+/* The wrapper is a <div data-async data-href> click target — see   */
+/* docs/dev/frontend/entity-state-panels.md for the whole-card-     */
+/* click contract.                                                  */
+
+.entity-card {
+    display: block;
+    cursor: pointer;
+    border: 1px solid var(--line-color);
+    border-radius: 4px;
+    background: var(--white);
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.entity-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+}
+
+.entity-card--default {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+}
+.entity-card--default .entity-card__icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+}
+.entity-card--default .entity-card__icon svg {
+    width: 100%;
+    height: 100%;
+}
+.entity-card--default .entity-card__name {
+    font-weight: 500;
+    color: var(--black);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.entity-card--tile {
+    /* display: grid so the single panel child auto-stretches to fill
+     * both axes — min-height alone wouldn't give the panel's height:100%
+     * a resolvable parent height, leaving the card's white background
+     * visible below the panel content. */
+    display: grid;
+    min-height: var(--hi-panel-tile-min-size);
+    /* Override the default ``min-width: auto`` on grid items — without
+     * this, long content (entity names, status chips) expands the cell
+     * past its 1fr column width, then ``.entity-card { overflow: hidden }``
+     * clips raw on the right rather than letting children truncate with
+     * ellipsis. */
+    min-width: 0;
+}
+
+.entity-card--row {
+    display: grid;
+    min-height: var(--hi-panel-row-min-height);
+}
+
+/* Edit mode: the entire card is a single click target opening the edit
+ * pane. Inner interactive elements (live-view links, controllers) are
+ * blocked at the CSS layer so panel authors don't need to gate their own
+ * click handlers on edit mode — clicks never reach the inner elements,
+ * they fall through to the card's data-async handler.
+ */
+[hi-edit="True"] .entity-card * {
+    pointer-events: none;
+}
+[hi-edit="True"] .entity-card {
+    pointer-events: auto;
+}
+
+/* ================================================================ */
+/* Drag and Drop Styling                                            */
+/* ================================================================ */
+
+.collection-tile-grid .draggable,
+.collection-default .draggable,
+.collection-row-list .draggable {
+    cursor: grab;
+}
+.collection-tile-grid .draggable:active,
+.collection-default .draggable:active,
+.collection-row-list .draggable:active {
+    cursor: grabbing;
+}
+.collection-tile-grid .draggable.ui-sortable-helper,
+.collection-default .draggable.ui-sortable-helper {
+    transform: rotate(2deg) scale(1.05);
+    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.collection-row-list .draggable.ui-sortable-helper {
+    background: var(--white);
+    border: 2px solid var(--primary-color);
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Drop zone styling */
+.collection-grid .ui-sortable-placeholder {
+    border: 2px dashed var(--primary-color);
+    background: var(--info-bg-light);
+    border-radius: 8px;
+    min-height: 120px;
+}
+
+.collection-list .ui-sortable-placeholder {
+    border: 2px dashed var(--primary-color);
+    background: var(--info-bg-light);
+    min-height: 60px;
+    border-radius: 4px;
+    margin: 5px 0;
+}
+
+/* List view card styling for thin rows */
+.collection-list .card {
+    margin-bottom: 0.75rem;
+    transition: all 0.2s ease;
+    border: 1px solid var(--line-color);
+}
+
+.collection-list .card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+}
+
+.collection-list .card-body {
+    padding: 0.75rem !important;
+}
+
+.collection-list .entity-title-section {
+    min-width: 200px;
+}
+
+/* ================================= */
+/* Entity Display Category Styling */
+/* ================================= */
+
+/* Entity category-specific styling for visual distinction */
+.entity-item.plain .card {
+    border-left: 3px solid var(--muted-color);
+}
+
+.entity-item.has-state .card {
+    border-left: 3px solid var(--primary-color);
+}
+
+.entity-item.has-video .card {
+    border-left: 3px solid var(--secondary-color);
+}
+
+/* List view category styling - solid borders on cards */
+.entity-row.plain .card {
+    border-left: 3px solid var(--muted-color);
+}
+
+.entity-row.has-state .card {
+    border-left: 3px solid var(--primary-color);
+}
+
+.entity-row.has-video .card {
+    border-left: 3px solid var(--secondary-color);
+}
+
+/* Enhanced grid card styling per category */
+.collection-grid .entity-item.plain .card:hover {
+    border-left-color: var(--muted-color);
+    border-left-width: 4px;
+}
+
+.collection-grid .entity-item.has-state .card:hover {
+    border-left-color: var(--primary-color);
+    border-left-width: 4px;
+}
+
+.collection-grid .entity-item.has-video .card:hover {
+    border-left-color: var(--secondary-color);
+    border-left-width: 4px;
+}
+
+/* List view entity category hover styles */
+.collection-list .entity-row.plain .card:hover {
+    border-left-color: var(--muted-color);
+    border-left-width: 4px;
+}
+
+.collection-list .entity-row.has-state .card:hover {
+    border-left-color: var(--primary-color);
+    border-left-width: 4px;
+}
+
+.collection-list .entity-row.has-video .card:hover {
+    border-left-color: var(--secondary-color);
+    border-left-width: 4px;
+}
+
+/* Sidebar form styling for narrow edit panels */
+.sidebar-form-field {
+    margin-bottom: 1rem;
+}
+
+.sidebar-form-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--tertiary-color);
+    margin-bottom: 0.25rem;
+    line-height: 1.2;
+}
+/* Marker for fields whose value differs from the server-rendered
+   initial value. Paired with ``button[disabled]`` on the form's
+   UPDATE button to make "unsaved changes" obvious at the field
+   level as well as the action level. Set on the label by the
+   ``Hi.updateFormDirtyState`` helper via ``oninput`` on the form. */
+.sidebar-form-label.dirty::after {
+    content: " \25CF";    /* small filled circle */
+    /* Reuse the edit-mode emphasis color (dark brick red) so the
+       indicator contrasts strongly against the peach
+       ``--edit-mode-primary-bg`` panel and tracks any future
+       edit-mode palette retheme. */
+    color: var(--edit-mode-dash-color);
+}
+
+.sidebar-form-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--line-color);
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    background-color: var(--white);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.sidebar-form-input:focus {
+    border-color: var(--primary-color);
+    outline: 0;
+    box-shadow: 0 0 0 0.125rem rgba(23, 112, 114, 0.25);
+}
+
+.sidebar-form-input.is-invalid {
+    border-color: var(--error-color);
+}
+
+.sidebar-form-error {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--error-color);
+    margin-top: 0.25rem;
+    line-height: 1.2;
+}
+
+.sidebar-form-actions {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.sidebar-form-actions .btn {
+    min-width: 100px;
+}
+
+/* Custom select styling for sidebar forms */
+.sidebar-form-field .hi-custom-select select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--line-color);
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    background-color: var(--white);
+}
+
+/* ==================== */
+/* SVG Template Cards   */
+/* ==================== */
+
+.hi-svg-template-card {
+    width: 180px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.hi-svg-template-card:hover {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb, 13, 110, 253), 0.25);
+}
+.hi-svg-template-thumbnail {
+    width: 160px;
+    height: 120px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0 auto;
+}
+.hi-svg-template-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+    margin-top: 0.25rem;
+}
+
+/* ==================== */
+/* Integration Sync Result Modal */
+/* ==================== */
+
+.hi-integration-logo {
+    max-height: 24px;
+    /* max-width clamps SVGs that lack intrinsic width/height
+       attributes (browsers default unsized SVGs to ~300x150,
+       which would distort the row layout). */
+    max-width: 24px;
+    width: auto;
+    height: auto;
+}
+
+/* Card variant for grid layouts (e.g., Data Import page) where the
+   logo carries primary recognition weight rather than acting as an
+   indicator next to a label. */
+.hi-integration-logo--card {
+    max-height: 72px;
+    max-width: 72px;
+    width: auto;
+    height: auto;
+}
+
+/* Smaller variant for inline contexts (entity detail badges,
+   list-row item indicators) where 24px is too dominant. */
+.hi-integration-logo--inline {
+    max-height: 18px;
+    max-width: 18px;
+    width: auto;
+    height: auto;
+}
+
+/* Detached variant: same dimensions as --inline, faded to signal
+   the previously-attached state. Paired with the
+   "Detached from <integration>" badge. */
+.hi-integration-logo--detached {
+    max-height: 18px;
+    max-width: 18px;
+    width: auto;
+    height: auto;
+    opacity: 0.6;
+}
+
+.hi-uppercase-label {
+    letter-spacing: 0.05em;
+}
+
+.hi-sync-result-hero-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.hi-sync-result-stat-number {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+/* Color-coded category section borders. The modifier names mirror
+   Bootstrap's text-* utility vocabulary so callers pick the right
+   color by semantic name, but the actual color values come from the
+   project's brand theme variables for consistency with the
+   project-overridden text utilities (e.g. .text-secondary renders
+   --secondary-color, not Bootstrap grey). */
+.hi-category-section {
+    border-left: 3px solid var(--secondary-color);
+}
+.hi-category-section--secondary {
+    border-left-color: var(--secondary-color);
+}
+.hi-category-section--info {
+    border-left-color: var(--info-color);
+}
+.hi-category-section--success {
+    border-left-color: var(--success-color);
+}
+.hi-category-section--danger {
+    border-left-color: var(--danger-color);
+}
+
+/* Framework subheader rendered between the modal title bar and the
+   panel body. Shows entity-type icon + label on the left, integration
+   logo centered, and the modal-type label on the right. Panels
+   render below this strip and don't repeat any of this identifying
+   chrome. */
+.hi-entity-status-subheader__type-icon .hi-entity-display-only-icon {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+}
+
+/* Light primary-tinted banner used as a section header (e.g., the
+   entity-history modal's per-state group headers). Uses the same
+   tint as ``.timeline-item:hover`` so the section header reads as
+   part of the same visual family as the cards it groups. */
+.hi-section-banner {
+    background-color: var(--info-bg-light);
+    border-left: 3px solid var(--primary-color);
+    border-radius: 0.25rem;
+}
+
+.hi-sync-result-item-list {
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+/* Diagnostic-notes list is taller than the per-category item lists
+   because info messages tend to be longer and more numerous. */
+.hi-sync-result-info-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Wrapper around a finite-clip <img> + its replay-from-start
+   overlay button. ``position: relative`` anchors the button to the
+   image's top-right; ``display: block`` and ``line-height: 0`` let
+   the wrapper shrink to the image's actual rendered dimensions so
+   the overlay sits on the image, not on padding around it. */
+.hi-video-clip {
+    position: relative;
+    display: block;
+    line-height: 0;
+}
+
+/* Replay-from-start overlay button. Always visible (touch screens
+   don't reliably support hover-reveal), semi-transparent backdrop
+   so it reads against any video content underneath. */
+.hi-video-clip-replay {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.15s ease, background-color 0.15s ease,
+                transform 0.05s ease;
+    line-height: 1;
+    z-index: 1;
+
+    /* Touch-friendly behavior on tablets / phones. */
+    touch-action: manipulation;            /* no 300ms tap delay */
+    -webkit-tap-highlight-color: transparent;  /* suppress iOS gray flash */
+    -webkit-touch-callout: none;           /* no long-press callout */
+    user-select: none;
+}
+
+/* Extend the hit area outward to ~48x48 without changing the visual
+   size of the button — meets the WCAG 2.5.5 / Apple HIG / Material
+   touch-target guidance while keeping the icon compact on the video
+   frame. Pseudo-element shares the button's pointer-events, so taps
+   in the extended area dispatch the click handler. */
+.hi-video-clip-replay::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+}
+
+.hi-video-clip-replay:hover,
+.hi-video-clip-replay:focus {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.75);
+    outline: none;
+}
+.hi-video-clip-replay:active {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(0.92);
+}
+
+/* ===== Event definition (trigger rule) edit modal ===== */
+
+.event-edit-field {
+    margin-bottom: 0.6rem;
+}
+.event-edit-field .input-group-text {
+    min-width: 9rem;
+    background-color: #f5f5f5;
+    border-color: var(--line-color);
+}
+.event-edit-field .form-control,
+.event-edit-field .custom-select {
+    flex: 1 1 auto;
+}
+.event-edit-field .form-error {
+    display: block;
+    margin-top: 0.15rem;
+    padding-left: 0.25rem;
+}
+
+.event-edit-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.75rem 0 1rem;
+}
+.event-edit-toggle label {
+    margin: 0;
+}
+
+.event-edit-section {
+    margin-top: 1.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line-color);
+}
+.event-edit-section-heading {
+    color: var(--primary-color);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin: 0 0 0.5rem;
+}
+
+.event-edit-action-card {
+    border: 1px solid var(--line-color);
+    border-radius: 0.25rem;
+    background-color: #fafafa;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.6rem;
+}
+.event-edit-action-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.event-edit-action-card-label {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+.event-edit-action-card-new {
+    background-color: var(--white-bg-color);
+}
+
+.event-edit-remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--muted-color);
+    cursor: pointer;
+}
+.event-edit-remove input[type="checkbox"]:checked + span {
+    color: var(--error-color);
+    font-weight: 600;
+}
+
+.event-edit-add {
+    margin: 0.5rem 0;
+}
+
+/* Placement modal — post-sync "Place new items" dispatcher. */
+
+.hi-placement-overrides-panel {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.hi-placement-column-header {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.25rem;
+    letter-spacing: 0.05em;
+}
+
+.hi-placement-group {
+    border-bottom: 1px solid #e9ecef;
+}
+
+.hi-placement-group:last-child {
+    border-bottom: none;
+}
+
+/* Per-item drill-down inside a group: left rule + indent so the
+   item rows read as children of the group above them. */
+.hi-placement-drill {
+    border-left: 2px solid #ced4da;
+    margin-left: 0.5rem;
+    padding-left: 0.75rem;
+}

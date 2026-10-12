@@ -1,0 +1,85 @@
+{% load icons %}
+{% for hidden in event_definition_form.hidden_fields %}
+{{ hidden }}
+{% endfor %}
+
+{% if event_definition_form.non_field_errors %}
+<div class="non-field-errors">
+  {% for err in event_definition_form.non_field_errors %}
+  <p class="form-error text-danger">ERROR: {{ err }}</p>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="event-edit-field">
+  <div class="input-group">
+    <div class="input-group-prepend">
+      <label for="{{ event_definition_form.name.id_for_label }}"
+             class="input-group-text">{{ event_definition_form.name.label }}</label>
+    </div>
+    {{ event_definition_form.name }}
+  </div>
+  <small class="form-error text-danger">{{ event_definition_form.name.errors }}</small>
+</div>
+
+<div class="event-edit-field">
+  <div class="input-group">
+    <div class="input-group-prepend">
+      <label for="{{ event_definition_form.event_type_str.id_for_label }}"
+             class="input-group-text">{{ event_definition_form.event_type_str.label }}</label>
+    </div>
+    {{ event_definition_form.event_type_str }}
+  </div>
+  <small class="form-error text-danger">{{ event_definition_form.event_type_str.errors }}</small>
+</div>
+
+<div class="event-edit-field">
+  <div class="input-group">
+    <div class="input-group-prepend">
+      <label for="{{ event_definition_form.event_window_secs.id_for_label }}"
+             class="input-group-text">{{ event_definition_form.event_window_secs.label }}</label>
+    </div>
+    {{ event_definition_form.event_window_secs }}
+  </div>
+  <small class="form-error text-danger">{{ event_definition_form.event_window_secs.errors }}</small>
+</div>
+
+<div class="event-edit-field">
+  <div class="input-group">
+    <div class="input-group-prepend">
+      <label for="{{ event_definition_form.dedupe_window_secs.id_for_label }}"
+             class="input-group-text">{{ event_definition_form.dedupe_window_secs.label }}</label>
+    </div>
+    {{ event_definition_form.dedupe_window_secs }}
+  </div>
+  <small class="form-error text-danger">{{ event_definition_form.dedupe_window_secs.errors }}</small>
+</div>
+
+<div class="event-edit-toggle">
+  {{ event_definition_form.enabled }}
+  <label for="{{ event_definition_form.enabled.id_for_label }}">Enabled</label>
+</div>
+
+<section class="event-edit-section">
+  <h2 class="event-edit-section-heading">Clauses</h2>
+  {{ event_clause_formset.management_form }}
+  {% for event_clause_form in event_clause_formset %}
+  {% include "event/edit/panes/event_clause_form.html" %}
+  {% endfor %}
+</section>
+
+<section class="event-edit-section">
+  <h2 class="event-edit-section-heading">Alarm Actions</h2>
+  {{ alarm_action_formset.management_form }}
+  {% for alarm_action_form in alarm_action_formset %}
+  {% include "event/edit/panes/alarm_action_form.html" %}
+  {% endfor %}
+</section>
+
+<section class="event-edit-section">
+  <h2 class="event-edit-section-heading">Control Actions</h2>
+  {{ control_action_formset.management_form }}
+  {% for control_action_form in control_action_formset %}
+  {% include "event/edit/panes/control_action_form.html" %}
+  {% endfor %}
+</section>

@@ -1,0 +1,12 @@
+{% extends "modals/action_done.html" %}
+{% load icons %}
+
+{% block modal_dialog_class %}hi-modal-dialog-800{% endblock %}
+
+{% block title_text %}
+{{ health_status_provider.health_status.provider_name }} Health
+{% endblock %}
+
+{% block body %}
+{% include "system/panes/health_status_details.html" %}
+{% endblock %}

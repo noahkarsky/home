@@ -1,0 +1,70 @@
+{% load icons %}
+{% load attribute_extras %}
+
+<div class="attr-v2-external-structured">
+
+  {% if view_data.attachments %}
+  <div class="attr-v2-file-section attr-ext-attachments">
+    <div class="attr-v2-file-grid">
+      {% for attachment in view_data.attachments %}
+      <div class="attr-v2-file-card attr-ext-attachment"
+           data-mime-type="{{ attachment.mime_type }}">
+        <a class="attr-ext-attachment__link"
+           href="{{ attachment.open_url }}"
+           target="_blank"
+           rel="noopener noreferrer"
+           title="{{ attachment.title }}">
+          <div class="attr-v2-file-thumbnail{% if attachment.thumbnail_url %} has-thumbnail{% endif %}">
+            {% if attachment.thumbnail_url %}
+            <img src="{{ attachment.thumbnail_url }}"
+                 alt="{{ attachment.title }}"
+                 class="attr-v2-file-thumbnail-image"
+                 loading="lazy"
+                 decoding="async">
+            {% else %}
+            {% if attachment.mime_type|slice:":5" == "image" %}
+              {% icon "camera" size="lg" %}
+              <div class="attr-v2-file-type-label">IMAGE</div>
+            {% elif attachment.mime_type == "application/pdf" %}
+              {% icon "upload" size="lg" %}
+              <div class="attr-v2-file-type-label">PDF</div>
+            {% elif attachment.mime_type|slice:":5" == "video" %}
+              {% icon "video" size="lg" %}
+              <div class="attr-v2-file-type-label">VIDEO</div>
+            {% else %}
+              {% icon "upload" size="lg" %}
+              <div class="attr-v2-file-type-label">FILE</div>
+            {% endif %}
+            {% endif %}
+          </div>
+          <div class="attr-v2-file-info">
+            <div class="attr-v2-file-name">{{ attachment.title }}</div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if view_data.attributes %}
+  <div class="attr-v2-attribute-list attr-ext-attribute-list">
+    {% for pair in view_data.attributes %}
+    <div class="attr-v2-attribute-card attr-ext-attribute-card">
+      <div class="attr-v2-attribute-header">
+        <div class="attr-v2-attribute-name">
+          <input type="text"
+                 value="{{ pair.name }}"
+                 class="attr-v2-title-input"
+                 disabled>
+        </div>
+      </div>
+      <div class="attr-v2-attribute-value">
+        <div class="attr-ext-value attr-ext-value--clamped">{{ pair.value|attribute_text_linkify }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>

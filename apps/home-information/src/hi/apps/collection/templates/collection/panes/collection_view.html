@@ -1,0 +1,52 @@
+<div id="hi-collection-view-main" class="hi-collection-view draggable-container hi-video-compact">
+  <div class="h4 pt-3"><small>Collection:</small> {{ collection.name }}</div>
+
+  {% if state_panel_data_list %}
+
+    {% if collection.collection_view_type.is_default %}
+      <div class="collection-default">
+        {% for state_panel_data in state_panel_data_list %}
+          <div id="{{ state_panel_data.entity.html_id }}"
+               class="entity-item {{ state_panel_data.display_category.css_class }} {% if request.view_parameters.is_editing %}draggable{% endif %}"
+               {% if request.view_parameters.is_editing %}draggable="true"{% endif %}>
+            {% include "collection/panes/entity_card_default.html" with state_panel_data=state_panel_data %}
+          </div>
+        {% endfor %}
+      </div>
+
+    {% elif collection.collection_view_type.is_list %}
+      <div class="collection-row-list">
+        {% for state_panel_data in state_panel_data_list %}
+          <div id="{{ state_panel_data.entity.html_id }}"
+               class="entity-item {{ state_panel_data.display_category.css_class }} {% if request.view_parameters.is_editing %}draggable{% endif %}"
+               {% if request.view_parameters.is_editing %}draggable="true"{% endif %}>
+            {% include "collection/panes/entity_card_row.html" with state_panel_data=state_panel_data %}
+          </div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      {# GRID, GRID_LARGE, GRID_SMALL, and SECURITY dispatch panels  #}
+      {# to the TILE context; the wrapper modifier class drives the  #}
+      {# column-count budget. SECURITY is an aspirational placeholder, #}
+      {# rendering identically to GRID today.                          #}
+      <div class="collection-tile-grid{% if collection.collection_view_type.is_grid_large %} collection-tile-grid--large{% elif collection.collection_view_type.is_grid_small %} collection-tile-grid--small{% endif %}">
+        {% for state_panel_data in state_panel_data_list %}
+          <div id="{{ state_panel_data.entity.html_id }}"
+               class="entity-item {{ state_panel_data.display_category.css_class }} {% if request.view_parameters.is_editing %}draggable{% endif %}"
+               {% if request.view_parameters.is_editing %}draggable="true"{% endif %}>
+            {% include "collection/panes/entity_card_tile.html" with state_panel_data=state_panel_data %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+  {% else %}
+    <div class="alert alert-info text-center w-100">
+      <div class="h4">No items in collection.</div>
+      {% if not request.view_parameters.is_editing %}
+        <div><em>Use <a href="{% url 'edit_start' %} ">Edit Mode</a> to add items.</em></div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

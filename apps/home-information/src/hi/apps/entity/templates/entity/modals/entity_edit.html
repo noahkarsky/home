@@ -1,0 +1,73 @@
+{% extends "modals/action_3.html" %}
+{% load icons %}
+
+{% block modal_dialog_class %}hi-modal-dialog-700{% endblock %}
+{% block title_text %}{{ entity.name }}{% endblock %}
+
+{% block subheader %}
+  {% include "entity/panes/entity_modal_subheader.html" with entity=entity modal_name="Info" %}
+{% endblock %}
+
+{% block body %}
+<!-- Root container for this attribute editing context -->
+<div id="{{ attr_page_context.container_html_id }}" 
+     class="{{ DIVID.ATTR_V2_CONTAINER_CLASS }}">
+  
+  <div class="{{ DIVID.ATTR_V2_FORM_CLASS }}">
+    <form id="{{ attr_page_context.form_html_id }}" 
+          action="{% url 'entity_edit' entity_id=entity.id %}" 
+          method="post" 
+          class="{{ DIVID.ATTR_V2_FORM_CLASS }} form" 
+          enctype="multipart/form-data">
+      {% csrf_token %}
+      
+      <!-- Main content wrapper for updates -->
+      <div id="{{ attr_page_context.content_html_id }}"
+           class="{{ DIVID.ATTR_V2_CONTENT_CLASS }}">
+        {% include "entity/panes/entity_edit_content_body.html" %}
+      </div>
+    </form>
+  </div>
+
+  <!-- File Upload Form Container (separate from main form to avoid nesting) -->
+  <div id="{{ attr_item_context.upload_form_container_html_id }}">
+    {% url 'entity_attribute_upload' entity_id=entity.id as file_upload_url %}  
+    {% include "attribute/components/upload_form.html" with file_upload_url=file_upload_url %}
+  </div>
+
+  <!-- Success/Error Messages -->
+  {% if messages %}
+    <div class="{{ DIVID.ATTR_V2_MESSAGES }}" id="{{ DIVID.ATTR_V2_MESSAGES }}">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block action_left %}
+<a class="btn btn-primary"
+   href="{% url 'entity_status' entity_id=entity.id %}"
+   data-async="modal">
+  {% icon "info-circle" css_class="hi-icon-left" %}STATUS
+</a>
+{% endblock %}
+
+{% block action_center %}
+<a class="btn btn-primary"
+   href="{% url 'entity_history' entity_id=entity.id %}"
+   data-async="modal">
+  {% icon "history" css_class="hi-icon-left" %}HISTORY
+</a>
+{% endblock %}
+
+{% block action_right %}
+<a id="hi-modal-done" role="button" {% if autofocus %}autofocus="autofocus"{% endif %}
+   class="btn btn-primary" href="#" data-dismiss="modal">DONE</a>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% load tz %}
+{% load humanize %}
+{% load icons %}
+{% timezone USER_TIMEZONE %}
+{% if event_history_list %}
+  <div class="timeline-items">
+    {% for event_history in event_history_list %}
+      <div class="timeline-item mb-2">
+        <div class="card border-left-primary">
+          <div class="card-body py-2 px-3">
+            <div class="row align-items-center">
+              <div class="col-md-3 col-sm-4">
+                <div class="text-center">
+                  {% if event_history.event_datetime|localtime|date:"Y-m-d" == today %}
+                    <strong class="text-primary d-block">Today {{ event_history.event_datetime|localtime|date:"g:i A" }}</strong>
+                  {% elif event_history.event_datetime|localtime|date:"Y-m-d" == yesterday %}
+                    <strong class="text-primary d-block">Yesterday {{ event_history.event_datetime|localtime|date:"g:i A" }}</strong>
+                  {% else %}
+                    <strong class="text-primary d-block">{{ event_history.event_datetime|localtime|date:"l, M j" }}</strong>
+                    <span class="text-primary">{{ event_history.event_datetime|localtime|date:"g:i A" }}</span>
+                  {% endif %}
+                  <small class="text-muted d-block">{{ event_history.event_datetime|localtime|naturaltime }}</small>
+                </div>
+              </div>
+              <div class="col-md-5 col-sm-8">
+                <div>
+                  <strong class="d-block mb-1">{{ event_history.event_definition.name }}</strong>
+                  <span class="badge badge-info mr-2">{{ event_history.event_definition.event_type.label }}</span>
+                  {% if event_history.entity_count == 1 %}
+                  <span class="badge badge-secondary">{{ event_history.entity_count }} item</span>
+                  {% else %}
+                  <span class="badge badge-secondary">{{ event_history.entity_count }} items</span>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="col-md-4 col-12">
+                {% if event_history.entity_display_list %}
+                <div class="mt-1 mt-md-0">
+                  <small class="text-muted d-block">Involved Items:</small>
+                  <div class="mt-1">
+                    {% for entity_display in event_history.entity_display_list %}
+                      {% if entity_display.has_video %}
+                        <a href="{% url 'console_entity_video_sensor_history_earlier' entity_display.entity.id entity_display.video_sensor.id event_history.video_url_timestamp %}"
+                           class="btn btn-sm btn-outline-primary mr-1 mb-1"
+                           data-async="#main-content"
+                           title="View video from {{ entity_display.entity.name }} around this event">
+                          {% icon "video" size="sm" css_class="hi-icon-left" %}{{ entity_display.entity.name }}
+                        </a>
+                      {% else %}
+                        <span class="text-info mr-2">{{ entity_display.entity.name }}</span>{% if not forloop.last %}, {% endif %}
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card border-0 bg-light">
+    <div class="card-body text-center py-4">
+      {% icon "clock" size="xl" color="muted" css_class="mb-3" %}
+      <h6 class="text-muted">No Rule Matches</h6>
+      <p class="text-muted mb-0">No rule matches have been recorded yet.</p>
+    </div>
+  </div>
+{% endif %}
+{% endtimezone %}

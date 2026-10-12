@@ -1,0 +1,142 @@
+import logging
+from typing import Dict
+import urllib.parse
+
+from django.shortcuts import render
+from django.template.loader import get_template
+from django.views.generic import View
+
+import hi.apps.common.antinode as antinode
+from hi.apps.common.utils import is_ajax
+
+from hi.constants import DIVID
+from hi.exceptions import MethodNotAllowedError
+
+logger = logging.getLogger(__name__)
+
+
+class HiAsyncView( View ):
+    """
+    Use this when async calls always populate the same <div> Id.
+    """
+    
+    def get_target_div_id( self ) -> str:
+        raise NotImplementedError('Subclasses must override this method.')
+
+    def get_template_name( self ) -> str:
+        raise NotImplementedError('Subclasses must override this method.')
+
+    def get_template_context( self, request, *args, **kwargs ) -> Dict[ str, str ]:
+        """ Can raise exceptions like BadRequest, Http404, etc. """
+        raise NotImplementedError('Subclasses must override this method.')
+
+    def get_content( self, request, *args, **kwargs ) -> str:
+        template_name = self.get_template_name()
+        template = get_template( template_name )
+        context = self.get_template_context( request, *args, **kwargs )
+        return template.render( context, request = request )
+
+    def get( self, request, *args, **kwargs ):
+        div_id = self.get_target_div_id()
+        content = self.get_content( request, *args, **kwargs )
+        return antinode.response(
+            insert_map = { div_id: content },
+        )
+
+    def post_template_context( self, request, *args, **kwargs ) -> Dict[ str, str ]:
+        """ Can raise exceptions like BadRequest, Http404, etc. """
+        raise MethodNotAllowedError()
+
+    def post_content( self, request, *args, **kwargs ) -> str:
+        template_name = self.get_template_name()
+        template = get_template( template_name )
+        context = self.post_template_context( request, *args, **kwargs )
+        return template.render( context, request = request )
+
+    def post( self, request, *args, **kwargs ):
+        div_id = self.get_target_div_id()
+        content = self.post_content( request, *args, **kwargs )
+        return antinode.response(
+            insert_map = { div_id: content },
+        )
+        
+
+class HiSideView( HiAsyncView ):
+
+    SIDE_URL_PARAM_NAME = 'details'
+    
+    def should_push_url( self ):
+        """
+        Subclasses can override this if they want full page refresh to retain
+        the view in the side page.
+        """
+        return False
+    
+    def get_target_div_id( self ) -> str:
+        return DIVID['SIDE']
+
+    def get( self, request, *args, **kwargs ):
+        div_id = self.get_target_div_id()
+        content = self.get_content( request, *args, **kwargs )
+        push_url = self.get_push_url( request )
+        return antinode.response(
+            insert_map = { div_id: content },
+            push_url = push_url,
+        )
+    
+    def get_push_url( self, request ):
+
+        referrer_url_str = request.headers.get('referer', '')
+        if not referrer_url_str:
+            return None
+
+        side_url = request.path
+        referrer_url = urllib.parse.urlparse( referrer_url_str )
+        referrer_query_params = urllib.parse.parse_qs( referrer_url.query )
+        if self.should_push_url():
+            referrer_query_params[self.SIDE_URL_PARAM_NAME] = side_url
+        elif self.SIDE_URL_PARAM_NAME in referrer_query_params:
+            del referrer_query_params[self.SIDE_URL_PARAM_NAME]
+            
+        # parse_qs returns list-valued params; doseq=True emits each value
+        # correctly (single-element lists become clean scalars) instead of
+        # str()'ing the list into "['value']".
+        updated_query_string = urllib.parse.urlencode( referrer_query_params, doseq = True )
+        return f"{referrer_url.path}?{updated_query_string}"
+        
+        
+class HiModalView( View ):
+
+    DEFAULT_PAGE_TEMPLATE_NAME = 'pages/main_default.html'
+    
+    def get_template_name( self ) -> str:
+        raise NotImplementedError('Subclasses must override this method.')
+
+    def get( self, request, *args, **kwargs ):
+        return self.modal_response( request )
+    
+    def modal_response( self, request, context = None, status = 200, template_name = None ):
+        if context is None:
+            context = dict()
+        modal_template_name = template_name or self.get_template_name()
+        if is_ajax( request ):
+            modal_response = antinode.modal_from_template(
+                request = request,
+                template_name = modal_template_name,
+                context = context,
+                status = status,
+            )
+            return modal_response
+
+        context['initial_modal_template_name'] = modal_template_name
+        page_template_name = self.DEFAULT_PAGE_TEMPLATE_NAME
+        return render( request,
+                       page_template_name,
+                       context,
+                       status = status )
+
+    def redirect_response( self, request, redirect_url ):
+        return antinode.redirect_response( redirect_url )
+
+    def refresh_response( self, request ):
+        return antinode.refresh_response()

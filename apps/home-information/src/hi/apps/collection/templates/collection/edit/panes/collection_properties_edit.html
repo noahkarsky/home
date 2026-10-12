@@ -1,0 +1,15 @@
+<form action="{% url 'collection_properties_edit' collection_id=collection.id %}"
+      method="post"
+      class="form" data-async="true">
+  {% csrf_token %}
+  
+  <div>
+    {% include "collection/edit/panes/collection_form.html" with collection_form=collection_edit_form %}
+  </div>
+  <div class="sidebar-form-actions">
+    <button id="hi-add-collection-edit-button" type="submit" class="btn btn-primary btn-block"
+	    name="action" value="update">
+      UPDATE
+    </button>
+  </div>
+</form>

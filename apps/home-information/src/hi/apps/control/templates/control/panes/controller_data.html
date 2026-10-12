@@ -1,0 +1,23 @@
+{% load common_tags %}
+{% load control_tags %}
+{% load icons %}
+{% generate_uuid as unique_id %}
+<div id="hi-controller-{{ controller_data.controller.id }}-{{ unique_id }}">
+  <form action="{% url 'control_controller' controller_id=controller_data.controller.id %}"
+        method="post"
+        class="form" data-async="#hi-controller-{{ controller_data.controller.id }}-{{ unique_id }}" data-mode="replace" data-stay-in-modal="true">
+    {% csrf_token %}
+    {% include_controller_widget controller_data.controller %}
+    {% if controller_data.error_list %}
+    <div class="alert alert-danger d-flex align-items-start mt-2 py-2 small"
+         role="alert">
+      {% icon "warning" css_class="mr-2 mt-1" %}
+      <div>
+        {% for msg in controller_data.error_list %}
+        <div>{{ msg }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </form>
+</div>

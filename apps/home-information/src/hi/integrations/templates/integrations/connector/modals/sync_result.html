@@ -1,0 +1,96 @@
+{% extends "modals/action_3.html" %}
+{% load icons %}
+{% load static %}
+
+{% comment %}
+  Integration sync result modal. Always rendered after sync
+  completes, regardless of what changed -- updates and removes are
+  surfaced rather than silently swallowed by an automatic transition
+  to placement.
+
+  The body composes shared panes:
+    sync_result_hero.html       -- headline (success / nothing-new /
+                                   error-partial / error-fatal).
+    sync_result_stats.html      -- stat-card row (success-only).
+    sync_result_categories.html -- per-category enumerations.
+    sync_result_errors.html     -- collapsible errors block.
+    sync_result_info.html       -- collapsible details block.
+
+  The preview-result modal reuses the same partials with preview
+  framing.
+
+  The modal title bar uses the generic HI logo + short generic title;
+  the integration's identity is surfaced as a body subtitle row
+  (logo + label) where the white background gives the transparent
+  integration logos predictable contrast.
+
+  Context:
+    sync_result      : IntegrationSyncResult (required)
+    integration_data : IntegrationData (required)
+    placement_url    : str (optional) -- target of the 'Place N items'
+                       CTA. Required when sync_result.created_list is
+                       non-empty; ignored otherwise.
+{% endcomment %}
+
+{% block modal_dialog_class %}hi-modal-dialog-600{% endblock %}
+
+{% block title_text %}
+{{ sync_result.title }}
+{% endblock %}
+
+{% block body %}
+{% include "integrations/panes/integration_modal_header.html" %}
+
+{% include "integrations/connector/panes/sync_result_hero.html" %}
+
+{% if sync_result.has_changes %}
+  {% include "integrations/connector/panes/sync_result_stats.html" %}
+  {% include "integrations/connector/panes/sync_result_categories.html" %}
+{% endif %}
+
+{% if sync_result.footer_message %}
+  <div class="alert alert-info small mb-3">
+    {{ sync_result.footer_message }}
+  </div>
+{% endif %}
+
+{% include "integrations/connector/panes/sync_result_errors.html" %}
+{% include "integrations/connector/panes/sync_result_info.html" %}
+{% endblock %}
+
+{% comment %}
+  Each footer block is declared unconditionally; the {% if %} is
+  inside the block content, not around the {% block %} tag. Django
+  parses block declarations regardless of enclosing if-conditions,
+  so wrapping the declarations would render both branches
+  simultaneously.
+
+  Page-reload onclick on the dismiss buttons: the modal-to-modal
+  flow that lands here never refreshes the underlying integrations
+  page, so a plain dismiss leaves a stale background. Reload makes
+  the background page consistent with anything the sync changed.
+{% endcomment %}
+{% block action_left %}
+{% if sync_result.created_list and placement_url %}
+<a id="hi-modal-cancel" role="button"
+   class="btn btn-outline-tertiary"
+   href="#"
+   onclick="location.reload(); return false;">{% icon "close" css_class="hi-icon-left" %}Place Later</a>
+{% endif %}
+{% endblock %}
+
+{% block action_center %}
+{% if not sync_result.created_list or not placement_url %}
+<a id="hi-modal-ok" role="button"
+   class="btn btn-primary"
+   href="#"
+   onclick="location.reload(); return false;">OK</a>
+{% endif %}
+{% endblock %}
+
+{% block action_right %}
+{% if sync_result.created_list and placement_url %}
+<a class="btn btn-primary" role="button"
+   href="{{ placement_url }}" data-async="modal">Place new items {% icon "chevron-right" css_class="hi-icon-right" %}</a>
+{% endif %}
+{% endblock %}

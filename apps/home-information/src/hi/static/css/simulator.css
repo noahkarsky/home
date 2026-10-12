@@ -1,0 +1,450 @@
+/*  Home Information
+    Copyright 2024-2026 by POMDP, LLC
+    All Rights Reserved.  
+*/
+:root {
+  --white-fg-color: #fdfdfd;
+  --white-bg-color: #fdfdfd;
+  --black: #020204;
+  --primary-color: #177072;
+  --on-primary-color: #ffffff;
+  --primary-highlight-color: #26BFD1;
+  --secondary-color: #F45F36;
+  --on-secondary-color: #ffffff;
+  --secondary-highlight-color: #F8AD98;
+  --tertiary-color: #020204;
+  --on-tertiary-color: #ffffff;
+  --secondary-highlight-color: #7e7e81;
+  --success-color: #177219;
+  --on-success-color: #ffffff;
+  --warning-color: #ECA500;
+  --on-warning-color: #ffffff;
+  --error-color: #721817;
+  --on-error-color: #ffffff;
+  --muted-color: #7e7e81;
+  --on-muted-color: #ffffff;
+  --line-color: #cccccc;
+
+  --top-buttons-height: 2.5rem;
+  --bottom-buttons-height: 2.5rem;
+
+  --sim-top-nav-height: 3rem;
+}
+
+.sim-top-nav {
+    display: flex;
+    align-items: center;
+    height: var(--sim-top-nav-height);
+    padding: 0 1rem;
+    background-color: var(--primary-color);
+    color: var(--on-primary-color);
+    border-bottom: 2px solid var(--secondary-color);
+}
+.sim-top-nav-brand {
+    display: flex;
+    align-items: center;
+    margin-right: 1.5rem;
+}
+.sim-top-nav-logo {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.5rem;
+}
+.sim-top-nav-title {
+    font-weight: bold;
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+}
+.sim-top-nav-links {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+.sim-top-nav-links li {
+    height: 100%;
+}
+.sim-top-nav-link {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 1rem;
+    color: var(--on-primary-color);
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+}
+.sim-top-nav-link:hover,
+.sim-top-nav-link:focus {
+    color: var(--on-primary-color);
+    background-color: rgba(255, 255, 255, 0.08);
+    text-decoration: none;
+    opacity: 1;
+}
+.sim-top-nav-link.active {
+    border-bottom-color: var(--secondary-color);
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.sim-main {
+    padding: 1rem 1.25rem;
+}
+
+.sim-profile-header {
+    padding: 0.5rem 0.25rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--line-color);
+    gap: 0.75rem 1rem;
+}
+.sim-profile-name {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+.sim-profile-name small {
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+}
+.sim-profile-name-value {
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+.sim-profile-actions .btn + .btn {
+    margin-left: 0;
+}
+.sim-profile-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+}
+.sim-profile-actions .btn .hi-icon {
+    vertical-align: middle;
+    width: 0.875rem;
+    height: 0.875rem;
+    flex: 0 0 auto;
+}
+
+.sim-main .nav-tabs {
+    margin-top: 1rem;
+    border-bottom-color: var(--line-color);
+}
+.sim-main .nav-tabs .nav-link {
+    color: var(--tertiary-color);
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.5rem 1rem;
+}
+.sim-main .nav-tabs .nav-link:hover {
+    color: var(--primary-color);
+    background-color: transparent;
+    border-color: transparent transparent var(--line-color);
+}
+.sim-main .nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    background-color: transparent;
+    border-color: transparent transparent var(--primary-color);
+    font-weight: 600;
+}
+.sim-main .tab-content {
+    padding-top: 0.75rem;
+}
+
+.sim-entity-row {
+    align-items: center;
+    padding: 0.4rem 0;
+    margin: 0;
+    border-bottom: 1px solid var(--line-color);
+}
+.sim-entity-row:last-child {
+    border-bottom: none;
+}
+.sim-entity-name {
+    font-weight: 500;
+}
+.sim-entity-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+}
+.sim-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.65rem;
+    line-height: 1;
+}
+.sim-icon-btn .hi-icon {
+    margin: 0;
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.sim-placeholder {
+    padding-top: 2rem;
+}
+.sim-placeholder-card {
+    max-width: 36rem;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: var(--white-bg-color);
+    border: 1px solid var(--line-color);
+    border-radius: 0.25rem;
+    text-align: center;
+}
+
+html, body {
+    font-size: 1rem;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: var(--white-bg-color);
+}
+
+a { color: var(--primary-color); }
+a:hover,
+a:focus,
+a:active {
+    opacity: 0.65;
+    color: var(--primary-color);
+}
+a.plain {
+    text-decoration: none;
+    cursor: pointer;
+    border-bottom: 0;
+}
+a.underline,
+a.underline:visited {
+    text-decoration: none;
+    padding-bottom: 0.075rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+.text-on-primary {
+    color: var(--on-primary-color) !important;
+}
+.text-white {
+    color: var(--white-fg-color) !important;
+}
+.text-black {
+    color: var(--black);
+}
+
+.bg-primary, .btn-primary {
+    color: var(--on-primary-color) !important;
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-highlight-color) !important;
+}
+.bg-primary a {
+    color: color: var(--on-primary-color);
+}
+.bg-primary a:hover,
+.bg-primary a:focus,
+.bg-primary a:active,
+.bg-info a:hover,
+.bg-info a:focus,
+.bg-info a:active {
+    opacity: 0.65;
+    color: color: var(--on-primary-color);
+}
+
+.bg-secondary, .btn-secondary {
+    color: var(--on-secondary-color) !important;
+    background-color: var(--secondary-color) !important;
+    border-color: var(--secondary-highlight-color) !important;
+}
+.bg-secondary a {
+    color: color: var(--on-secondary-color);
+}
+.bg-secondary a:hover,
+.bg-secondary a:focus,
+.bg-secondary a:active,
+.bg-info a:hover,
+.bg-info a:focus,
+.bg-info a:active {
+    opacity: 0.65;
+    color: color: var(--on-secondary-color);
+}
+
+.bg-tertiary, .btn-tertiary {
+    color: var(--on-tertiary-color) !important;
+    background-color: var(--tertiary-color) !important;
+    border-color: var(--tertiary-highlight-color) !important;
+}
+.bg-tertiary a {
+    color: color: var(--on-tertiary-color);
+}
+.bg-tertiary a:hover,
+.bg-tertiary a:focus,
+.bg-tertiary a:active,
+.bg-info a:hover,
+.bg-info a:focus,
+.bg-info a:active {
+    opacity: 0.65;
+    color: color: var(--on-tertiary-color);
+}
+
+.bg-muted, .btn-muted {
+    color: var(--on-muted-color) !important;
+    background-color: var(--muted-color) !important;
+}
+
+.hi-top-content {
+    height: var(--top-buttons-height);
+    border-bottom: 1px solid var(--line-color);
+}
+.hi-bottom-content {
+    height: var(--bottom-buttons-height);
+    border-top: 1px solid var(--line-color);
+}
+.hi-screen {
+    max-height: 100vh;
+}
+.scrollable-column {
+    overflow-y: auto;
+    max-height: 100vh;
+    padding-top: var(--top-buttons-height);
+    padding-bottom: var(--bottom-buttons-height);
+}
+.fixed-column {
+    overflow-y: auto;
+    flex-shrink: 0;
+    height: 100vh;
+    max-height: 100vh;
+    padding-top: var(--top-buttons-height);
+    padding-bottom: var(--bottom-buttons-height);
+    border-left: 1px solid var(--line-color);
+}
+
+.btn-control {
+    width: 100%;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 24px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+.switch input:checked + .slider {
+    background-color: var(--success-color);
+}
+.switch input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* ----- Scene sequence timeline ----- */
+.sim-timeline {
+    width: 100%;
+    position: relative;
+}
+.sim-timeline-svg {
+    display: block;
+    cursor: pointer;
+    background: #fbfbfd;
+    border: 1px solid #e3e3e8;
+    border-radius: 4px;
+}
+.sim-timeline-axis {
+    stroke: #b6b6c0;
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+/* Wide transparent column makes each glyph easy to hover/click. */
+.sim-timeline-hit {
+    fill: transparent;
+    cursor: pointer;
+}
+.sim-timeline-glyph {
+    pointer-events: none;
+    transition: fill 0.1s ease;
+}
+.sim-timeline-step .sim-timeline-glyph {
+    fill: #6c8cd5;
+}
+.sim-timeline-step:hover .sim-timeline-glyph {
+    fill: #21407f;
+}
+.sim-timeline-marker .sim-timeline-glyph {
+    fill: #d99a2b;
+}
+.sim-timeline-marker:hover .sim-timeline-glyph {
+    fill: #9c6606;
+}
+.sim-timeline-end-rule {
+    stroke: #6c757d;
+    stroke-width: 3;
+    vector-effect: non-scaling-stroke;
+}
+.sim-timeline-end:hover .sim-timeline-end-rule {
+    stroke: #343a40;
+}
+.sim-timeline-playhead {
+    stroke: #d9534f;
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+    pointer-events: none;
+}
+.sim-timeline-scale {
+    font-size: 0.72rem;
+    color: #888;
+    padding: 0 2px;
+}
+.sim-timeline-tooltip {
+    position: absolute;
+    z-index: 20;
+    pointer-events: none;
+    background: rgba(33, 37, 41, 0.95);
+    color: #fff;
+    font-size: 0.74rem;
+    line-height: 1.25;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    max-width: 95%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Bootstrap's .sticky-top is z-index 1020, which sits ABOVE dropdown
+   menus (z-index 1000). The scene selector lives in the header above this
+   sticky transport, so its open menu would be shadowed by the bar. Drop
+   the transport below the dropdown layer while keeping it above the
+   scrolling states grid. The transport's own dropdowns (sequence select)
+   still open fine over the grid via this element's stacking context. */
+.sim-scene-transport.sticky-top {
+    z-index: 100;
+}

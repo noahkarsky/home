@@ -1,0 +1,85 @@
+{% extends "config/pages/config_base.html" %}
+{% load icons %}
+{% load tz %}
+
+{% block config_content %}
+{% timezone USER_TIMEZONE %}
+<div class="container-fluid">
+  <!-- System Health Page Header -->
+  <div class="d-flex justify-content-between align-items-center my-3">
+    <h3>System Health</h3>
+    <a href="{% url 'system_info' %}"
+        class="btn btn-outline-primary btn-sm" data-async="true">
+      {% icon "sync" size="sm" css_class="mr-1" %}Refresh Status
+    </a>
+  </div>
+
+  <!-- Application Monitors Grid -->
+  <div class="row">
+    <div class="col-12">
+      <h5 class="mb-3">Application Monitors</h5>
+    </div>
+  </div>
+
+  <div class="row">
+    {% for monitor_provider in app_monitor_providers %}
+    <div class="col-lg-6 col-md-12 mb-3">
+      {% include "system/panes/health_status_card.html" with health_status_provider=monitor_provider %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Integrations Monitors Grid -->
+  <div class="row">
+    <div class="col-12">
+      <h5 class="mb-3">Integration Monitors</h5>
+    </div>
+  </div>
+
+  <div class="row">
+    {% for item in integration_health_items %}
+    <div class="col-lg-6 col-md-12 mb-3">
+      {% if item.health_status_provider %}
+        {% include "system/panes/health_status_card.html" with health_status_provider=item.health_status_provider %}
+      {% else %}
+        {% include "system/panes/integration_paused_card.html" with integration_data=item.integration_data %}
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="col-12 text-secondary"><em>No integrations configured.</em></div>
+    {% endfor %}
+    {% for provider in framework_health_providers %}
+    <div class="col-lg-6 col-md-12 mb-3">
+      {% include "system/panes/health_status_card.html" with health_status_provider=provider %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Weather Sources Section -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <h5 class="mb-3">Weather API Sources</h5>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      {% include "system/panes/health_status_brief.html" with health_status_provider=weather_provider %}
+    </div>
+  </div>
+
+  <!-- Background Tasks Section -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <h5 class="mb-3">System Tasks</h5>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      {% include "system/panes/health_status_brief.html" with health_status_provider=background_task_provider %}
+    </div>
+  </div>
+</div>
+{% endtimezone %}
+{% endblock %}

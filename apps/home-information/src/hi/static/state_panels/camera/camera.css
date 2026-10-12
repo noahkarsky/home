@@ -1,0 +1,239 @@
+/* EntityStatePanel for CAMERA entities.
+ *
+ * All rules nested under .hi-state-panel-camera. The panel composes
+ * existing video-stream and state-status partials; this CSS supplies
+ * the per-context layout (modal / list / grid) around them.
+ */
+
+:root {
+    --hi-camera-offline-color: #6b7280;
+    --hi-camera-offline-bg: #2c2c2c;
+}
+
+.hi-state-panel-camera .stream {
+    position: relative;
+    overflow: hidden;
+    background: #1a1a1a;
+}
+
+.hi-state-panel-camera .stream-unavailable {
+    background: var(--hi-camera-offline-bg);
+    color: var(--hi-camera-offline-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    min-height: 60px;
+}
+
+/* The live-view wrapper renders an anchor that wraps a
+ * .video-container around the <img>. Both intermediate elements
+ * must carry height:100% so the <img>'s height:100% / object-fit
+ * resolves against the .stream box's aspect-ratio rather than the
+ * image's intrinsic height (which would otherwise overflow the
+ * 16:9 area and get bottom-clipped by overflow:hidden). */
+.hi-state-panel-camera .stream a {
+    display: block;
+    text-decoration: none;
+    width: 100%;
+    height: 100%;
+}
+.hi-state-panel-camera .stream .video-container {
+    width: 100%;
+    height: 100%;
+    /* Override the main video pane's 400px collapse-guard — panels  */
+    /* size their stream box from their own context (tile cell or    */
+    /* modal stream rule below), not from the container itself.      */
+    min-height: 0;
+}
+.hi-state-panel-camera .stream .video-container img,
+.hi-state-panel-camera .stream img.img-fluid {
+    width: 100%;
+    height: 100%;
+    /* ``contain`` rather than ``cover``: integrations produce
+     * arbitrary aspect ratios, and silently cropping pixels from
+     * the user's camera feed is the wrong default. Grid/list cards
+     * keep their fixed aspect-ratio cell for layout consistency;
+     * the image is letterboxed inside. */
+    object-fit: contain;
+    display: block;
+}
+
+/* ============================================================== */
+/* Modal layout                                                   */
+/* ============================================================== */
+
+/* Modal shows one camera at a time, so the box sizes to the image's
+ * natural aspect ratio — no cropping, no letterboxing. Grid/list
+ * contexts (below) keep their fixed aspect-ratio cell for layout
+ * consistency across cameras; ``object-fit: contain`` inherited from
+ * the base rule keeps each image whole inside its cell. */
+.hi-state-panel-camera--modal .stream {
+    margin-bottom: 16px;
+    /* Collapse-guard for the EntityStatus modal: the image is        */
+    /* ``height: auto`` here, so a hung stream with no natural        */
+    /* dimensions would otherwise drop the box to 0. Sized smaller    */
+    /* than the main video pane's 400px since the modal frames a     */
+    /* single camera in a tighter chrome.                             */
+    min-height: 200px;
+}
+.hi-state-panel-camera--modal .stream .video-container img,
+.hi-state-panel-camera--modal .stream img.img-fluid {
+    height: auto;
+}
+
+/* ============================================================== */
+/* List card layout                                               */
+/* ============================================================== */
+
+/* ROW context: status-only horizontal strip — no live feed embed.    */
+/* A small snapshot thumbnail (when available) replaces the stream    */
+/* for visual identification; falls back to the entity icon when no   */
+/* snapshot exists.                                                    */
+
+.hi-state-panel-camera--row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    min-height: var(--hi-panel-row-min-height);
+}
+.hi-state-panel-camera--row .row-thumb {
+    flex-shrink: 0;
+    width: 80px;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.hi-state-panel-camera--row .row-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.hi-state-panel-camera--row .row-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+}
+.hi-state-panel-camera--row .row-icon svg {
+    width: 100%;
+    height: 100%;
+}
+.hi-state-panel-camera--row .entity-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: 14px; font-weight: 600; line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.hi-state-panel-camera--row .last-event {
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--text-muted, #6c757d);
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* ============================================================== */
+/* Grid card layout — video fills, name overlay along the bottom. */
+/* ============================================================== */
+
+.hi-state-panel-camera--tile {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+.hi-state-panel-camera--tile .stream {
+    width: 100%;
+    height: 100%;
+}
+.hi-state-panel-camera--tile .tile-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 8px 6px;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 100%);
+    color: white;
+}
+.hi-state-panel-camera--tile .entity-name {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-shadow: 0 0 4px rgba(0,0,0,0.6);
+}
+
+/* ============================================================== */
+/* Motion chip — small status indicator overlaid on the stream    */
+/* corner when the camera entity carries a MOVEMENT role. Uses    */
+/* the framework's decay-aware status tokens so the chip color    */
+/* matches the rest of the app's motion treatment.                */
+/* ============================================================== */
+
+.hi-state-panel-camera .stream {
+    position: relative;
+}
+.hi-state-panel-camera .motion-chip {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    color: var(--status-idle-color);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    z-index: 2;
+}
+.hi-state-panel-camera .motion-chip svg {
+    width: 65%;
+    height: 65%;
+}
+.hi-state-panel-camera .motion-chip[status="active"] {
+    background: var(--status-active-color);
+    color: var(--on-status-active-color);
+    animation: hi-camera-motion-pulse 1.2s ease-in-out infinite;
+}
+.hi-state-panel-camera .motion-chip[status="recent"] {
+    background: var(--status-recent-color);
+    color: var(--on-status-recent-color);
+}
+.hi-state-panel-camera .motion-chip[status="past"] {
+    background: var(--status-past-color);
+    color: var(--on-status-past-color);
+}
+
+@keyframes hi-camera-motion-pulse {
+    0%, 100% { transform: scale(1);    opacity: 1; }
+    50%      { transform: scale(1.12); opacity: 0.9; }
+}
+
+/* Smaller chip in compact contexts. */
+.hi-state-panel-camera--row .motion-chip,
+.hi-state-panel-camera--tile .motion-chip {
+    width: 24px;
+    height: 24px;
+    top: 4px;
+    right: 4px;
+}
+
+/* In ROW context the chip flows inline (no stream to overlay) — */
+/* drop the absolute positioning and the box-shadow.             */
+.hi-state-panel-camera--row .motion-chip {
+    position: static;
+    flex-shrink: 0;
+    box-shadow: none;
+    top: auto;
+    right: auto;
+}

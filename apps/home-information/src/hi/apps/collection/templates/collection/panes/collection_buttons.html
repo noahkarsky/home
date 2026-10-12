@@ -1,0 +1,17 @@
+{% load icons %}
+<div class="d-flex justify-content-start draggable-container hi-button-bar-flex">
+  {% for collection in collection_list %}
+  <div id="{{ collection.html_id }}-button"
+       class="{% if request.view_parameters.is_editing %}draggable{% endif %} mx-1"
+       {% if request.view_parameters.is_editing %}draggable="true"{% endif %}
+       >
+    <a href="{% url 'collection_view' collection_id=collection.id %}"
+       class="btn {% if collection == request.view_parameters.active_collection %}btn-secondary{% else %}btn-primary{% endif %} btn-control"
+       role="button" >
+      {{ collection.name|truncatechars:18 }}
+    </a>
+  </div>
+  {% empty %}
+  <div><em>No collections defined.</em></div>
+  {% endfor %}
+</div>

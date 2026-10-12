@@ -1,0 +1,538 @@
+{
+  "profile_name": "Two Story",
+  "description": "Generated snapshot from current database state",
+  "locations": [
+    {
+      "name": "My Home",
+      "order_id": 0,
+      "views": [
+        {
+          "name": "Interior",
+          "location_view_type_str": "default",
+          "svg_view_box_str": "0 0 2000 2000",
+          "svg_style_name_str": "color",
+          "svg_rotate": 0.0,
+          "order_id": 2
+        },
+        {
+          "name": "Exterior",
+          "location_view_type_str": "default",
+          "svg_view_box_str": "0 40.896860020062064 2000 1912.5205753386745",
+          "svg_style_name_str": "color",
+          "svg_rotate": 0.0,
+          "order_id": 4
+        },
+        {
+          "name": "Kitchen",
+          "location_view_type_str": "default",
+          "svg_view_box_str": "1103.142981709687 874.7585050264764 767.0925682200003 808.2064433295275",
+          "svg_style_name_str": "color",
+          "svg_rotate": 0.0,
+          "order_id": 6
+        }
+      ],
+      "svg_template_name": "profiles/svg/backgrounds/two_story-0.svg"
+    },
+    {
+      "name": "Upstairs",
+      "order_id": 1,
+      "views": [
+        {
+          "name": "All",
+          "location_view_type_str": "default",
+          "svg_view_box_str": "152.88967718626765 97.09804892210309 1743.6768582313691 1837.132740286189",
+          "svg_style_name_str": "color",
+          "svg_rotate": 0.0,
+          "order_id": 0
+        }
+      ],
+      "svg_template_name": "profiles/svg/backgrounds/two_story-1.svg"
+    }
+  ],
+  "collections": [
+    {
+      "name": "Appliances",
+      "collection_type_str": "appliances",
+      "collection_view_type_str": "list",
+      "order_id": 2,
+      "entities": [
+        "Rice Cooker",
+        "Blender",
+        "Food Processor"
+      ]
+    },
+    {
+      "name": "Lawn Tools",
+      "collection_type_str": "other",
+      "collection_view_type_str": "grid",
+      "order_id": 4,
+      "entities": [
+        "Hedge Trimmer",
+        "Lawn Mower",
+        "Leaf Blower",
+        "String Trimmer"
+      ],
+      "comment": "Collection with path representation",
+      "paths": [
+        {
+          "location_name": "My Home",
+          "svg_path": " M 840.1774291992188,229.75241071217238 L 1131.2366943359375,229.741088690688 L 1130.4466552734375,293.3379161607668 L 839.8587646484375,291.7162120592043 Z"
+        }
+      ],
+      "visible_in_views": [
+        "Exterior"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "name": "A/V Receiver",
+      "entity_type_str": "av_receiver",
+      "comment": "Icon-positioned entities (EntityPosition) - most common case",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 361.612671,
+          "svg_y": 979.249084,
+          "svg_scale": 2.058968
+        }
+      ],
+      "visible_in_views": [
+        "Interior"
+      ]
+    },
+    {
+      "name": "Blender",
+      "entity_type_str": "appliance",
+      "comment": "Entities that are part of collections",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1486.689266,
+          "svg_y": 1278.861727,
+          "svg_scale": 1.198582
+        }
+      ]
+    },
+    {
+      "name": "Breaker Panel",
+      "entity_type_str": "electric_panel",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1217.228394,
+          "svg_y": 999.646423,
+          "svg_scale": 1.519867
+        }
+      ],
+      "visible_in_views": [
+        "Exterior",
+        "Interior",
+        "Kitchen"
+      ]
+    },
+    {
+      "name": "Car",
+      "entity_type_str": "automobile",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 541.721619,
+          "svg_y": 1916.045288,
+          "svg_scale": 1.330223,
+          "svg_rotate": 269.918069
+        }
+      ],
+      "visible_in_views": [
+        "Exterior"
+      ]
+    },
+    {
+      "name": "Coffee Machine",
+      "entity_type_str": "coffee_maker",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1629.95752,
+          "svg_y": 1486.761597,
+          "svg_scale": 1.526897
+        }
+      ],
+      "visible_in_views": [
+        "Kitchen"
+      ]
+    },
+    {
+      "name": "Dishwasher",
+      "entity_type_str": "dishwasher",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1663.131714,
+          "svg_y": 1162.663574,
+          "svg_scale": 1.695319
+        }
+      ],
+      "visible_in_views": [
+        "Kitchen",
+        "Interior"
+      ]
+    },
+    {
+      "name": "Dryer",
+      "entity_type_str": "clothes_dryer",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1262.080811,
+          "svg_y": 1324.753906,
+          "svg_scale": 1.712929
+        }
+      ],
+      "visible_in_views": [
+        "Interior",
+        "Kitchen"
+      ]
+    },
+    {
+      "name": "Electric Meter",
+      "entity_type_str": "electricity_meter",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 186.624634,
+          "svg_y": 1424.442993,
+          "svg_scale": 1.226173
+        }
+      ],
+      "visible_in_views": [
+        "Exterior"
+      ]
+    },
+    {
+      "name": "Food Processor",
+      "entity_type_str": "appliance",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1547.370605,
+          "svg_y": 1489.048096,
+          "svg_scale": 1.198582
+        }
+      ]
+    },
+    {
+      "name": "HVAC",
+      "entity_type_str": "hvac_air_handler",
+      "positions": [
+        {
+          "location_name": "Upstairs",
+          "svg_x": 372.660858,
+          "svg_y": 616.275818,
+          "svg_scale": 2.455155
+        },
+        {
+          "location_name": "My Home",
+          "svg_x": 1249.603516,
+          "svg_y": 237.49353,
+          "svg_scale": 2.182897
+        }
+      ],
+      "visible_in_views": [
+        "Exterior"
+      ]
+    },
+    {
+      "name": "Hedge Trimmer",
+      "entity_type_str": "hedge_trimmer"
+    },
+    {
+      "name": "Kitchen Sink",
+      "entity_type_str": "sink",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1551.332764,
+          "svg_y": 1142.849121,
+          "svg_scale": 1.774636
+        }
+      ],
+      "visible_in_views": [
+        "Kitchen",
+        "Interior"
+      ]
+    },
+    {
+      "name": "Lawn Mower",
+      "entity_type_str": "lawn_mower"
+    },
+    {
+      "name": "Leaf Blower",
+      "entity_type_str": "leaf_blower"
+    },
+    {
+      "name": "Live Oak",
+      "entity_type_str": "tree",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 159.893005,
+          "svg_y": 171.552963,
+          "svg_scale": 3.417176
+        }
+      ],
+      "visible_in_views": [
+        "Exterior"
+      ]
+    },
+    {
+      "name": "Main Bath Shower",
+      "entity_type_str": "shower",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1655.259277,
+          "svg_y": 783.701172,
+          "svg_scale": 2.248753
+        }
+      ],
+      "visible_in_views": [
+        "Interior"
+      ]
+    },
+    {
+      "name": "Main Bath Sink",
+      "entity_type_str": "sink",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1477.710938,
+          "svg_y": 1024.190308,
+          "svg_scale": 2.075106,
+          "svg_rotate": 179.450907
+        }
+      ],
+      "visible_in_views": [
+        "Interior"
+      ]
+    },
+    {
+      "name": "Main Bath Toilet",
+      "entity_type_str": "toilet",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1708.455078,
+          "svg_y": 995.356873,
+          "svg_scale": 2.549861,
+          "svg_rotate": 180.518676
+        }
+      ],
+      "visible_in_views": [
+        "Interior"
+      ]
+    },
+    {
+      "name": "Microwave",
+      "entity_type_str": "microwave_oven",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1745.810791,
+          "svg_y": 1488.009888,
+          "svg_scale": 1.326768
+        }
+      ],
+      "visible_in_views": [
+        "Kitchen",
+        "Interior"
+      ]
+    },
+    {
+      "name": "Oven",
+      "entity_type_str": "oven",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1431.642334,
+          "svg_y": 1161.077637,
+          "svg_scale": 1.849968
+        }
+      ],
+      "visible_in_views": [
+        "Kitchen",
+        "Interior"
+      ]
+    },
+    {
+      "name": "Refrigerator",
+      "entity_type_str": "refrigerator",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1769.103027,
+          "svg_y": 1188.592773,
+          "svg_scale": 2.796118
+        }
+      ],
+      "visible_in_views": [
+        "Kitchen",
+        "Interior"
+      ]
+    },
+    {
+      "name": "Rice Cooker",
+      "entity_type_str": "appliance",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1490.207031,
+          "svg_y": 1484.650879,
+          "svg_scale": 1.198582
+        }
+      ]
+    },
+    {
+      "name": "String Trimmer",
+      "entity_type_str": "trimmer"
+    },
+    {
+      "name": "Television",
+      "entity_type_str": "television",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 531.097717,
+          "svg_y": 988.650085,
+          "svg_scale": 2.407921
+        }
+      ],
+      "visible_in_views": [
+        "Interior"
+      ]
+    },
+    {
+      "name": "Thermostat",
+      "entity_type_str": "thermostat",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1214.65564,
+          "svg_y": 875.972107,
+          "svg_scale": 1.680121
+        }
+      ],
+      "visible_in_views": [
+        "Interior"
+      ]
+    },
+    {
+      "name": "Upstairs Shower",
+      "entity_type_str": "shower",
+      "positions": [
+        {
+          "location_name": "Upstairs",
+          "svg_x": 940.667786,
+          "svg_y": 403.603363,
+          "svg_scale": 1.908946
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Upstairs Sink",
+      "entity_type_str": "sink",
+      "positions": [
+        {
+          "location_name": "Upstairs",
+          "svg_x": 1187.934448,
+          "svg_y": 420.445404,
+          "svg_scale": 2.265066,
+          "svg_rotate": 89.305133
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Upstairs Toilet",
+      "entity_type_str": "toilet",
+      "positions": [
+        {
+          "location_name": "Upstairs",
+          "svg_x": 1185.335693,
+          "svg_y": 621.433838,
+          "svg_scale": 2.086857,
+          "svg_rotate": 89.717122
+        }
+      ],
+      "visible_in_views": [
+        "All"
+      ]
+    },
+    {
+      "name": "Washer",
+      "entity_type_str": "clothes_washer",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1263.380249,
+          "svg_y": 1198.834473,
+          "svg_scale": 1.683932
+        }
+      ],
+      "visible_in_views": [
+        "Interior"
+      ]
+    },
+    {
+      "name": "Water Heater",
+      "entity_type_str": "water_heater",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 1316.365601,
+          "svg_y": 992.605286,
+          "svg_scale": 1.773727
+        }
+      ],
+      "visible_in_views": [
+        "Interior",
+        "Kitchen"
+      ]
+    },
+    {
+      "name": "Water Meter",
+      "entity_type_str": "water_meter",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 2206.597656,
+          "svg_y": 2803.320313,
+          "svg_scale": 2.019884
+        }
+      ],
+      "visible_in_views": [
+        "Exterior"
+      ]
+    },
+    {
+      "name": "WiFi Router",
+      "entity_type_str": "access_point",
+      "positions": [
+        {
+          "location_name": "My Home",
+          "svg_x": 684.302979,
+          "svg_y": 973.593201,
+          "svg_scale": 1.351972
+        }
+      ],
+      "visible_in_views": [
+        "Interior"
+      ]
+    }
+  ]
+}

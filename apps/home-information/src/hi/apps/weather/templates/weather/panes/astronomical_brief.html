@@ -1,0 +1,42 @@
+{% load static %}
+{% load units %}
+
+<div class="d-flex justify-content-around align-items-center">
+  <div class=" small lh-sm">
+    <div class="d-flex justify-content-center">
+      <div class="text-right">
+        Sunrise: &nbsp;
+      </div>
+      <div>
+        {% if astronomical_data.sunrise %}
+        {{ astronomical_data.sunrise.value }}
+        {% else %}
+        --
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex justify-content-center">
+      <div class="text-right">
+        Sunset: &nbsp;
+      </div>
+      <div>
+        {% if astronomical_data.sunset %}
+        {{ astronomical_data.sunset.value }}
+        {% else %}
+        --
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="d-flex align-items-center small text-center">
+    <span class="mr-1">Moon:</span>
+    {% if astronomical_data.moon_illumination %}
+    {% with astronomical_data.moon_phase as moon_phase %}
+    <img height="32" src="{% static moon_phase.icon_filename %}"
+         alt="{{ moon_phase.label }}" />
+    {% endwith %}
+    {% else %}
+    --
+    {% endif %}
+  </div>
+</div>

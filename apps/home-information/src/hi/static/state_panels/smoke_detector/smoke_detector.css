@@ -1,0 +1,246 @@
+/* EntityStatePanel for SMOKE_DETECTOR entities.
+ *
+ * All rules nested under .hi-state-panel-smoke_detector so the short
+ * scoped class names (.icon, .status-label, .badge, .hero, etc.)
+ * don't leak. The panel root carries the SMOKE state's polling-
+ * driven status attribute — its value is the decay-aware token
+ * (``idle`` / ``active`` / ``recent`` / ``past``) at both initial
+ * render and across polling refreshes, because the template seeds
+ * it from ``smoke_data.svg_status_style.status_value`` and the
+ * polling pipeline writes the same vocabulary. CSS keyed on the
+ * single token suffices.
+ */
+
+:root {
+    --hi-smoke-idle-color:   #059669;
+    --hi-smoke-idle-bg:      rgba(5, 150, 105, 0.10);
+    --hi-smoke-active-color: #dc2626;
+    --hi-smoke-active-bg:    rgba(220, 38, 38, 0.15);
+    --hi-smoke-recent-color: #d97706;
+    --hi-smoke-recent-bg:    rgba(217, 119, 6, 0.12);
+    --hi-smoke-past-color:   #a16207;
+    --hi-smoke-past-bg:      rgba(161, 98, 7, 0.10);
+}
+
+/* ============================================================== */
+/* Badge — circular icon hero, shared across contexts.            */
+/* ============================================================== */
+
+.hi-state-panel-smoke_detector .badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.hi-state-panel-smoke_detector .icon {
+    width: 60%;
+    height: 60%;
+}
+
+/* ============================================================== */
+/* Per-state visibility: icon + label variants                    */
+/* ============================================================== */
+
+.hi-state-panel-smoke_detector .icon,
+.hi-state-panel-smoke_detector .status-label {
+    display: none;
+}
+.hi-state-panel-smoke_detector[status="idle"]   .icon--idle,
+.hi-state-panel-smoke_detector[status="idle"]   .status-label--idle,
+.hi-state-panel-smoke_detector[status="active"] .icon--active,
+.hi-state-panel-smoke_detector[status="active"] .status-label--active,
+.hi-state-panel-smoke_detector[status="recent"] .icon--recent,
+.hi-state-panel-smoke_detector[status="recent"] .status-label--recent,
+.hi-state-panel-smoke_detector[status="past"]   .icon--past,
+.hi-state-panel-smoke_detector[status="past"]   .status-label--past {
+    display: block;
+}
+
+/* ============================================================== */
+/* Per-state color tints                                          */
+/* ============================================================== */
+
+.hi-state-panel-smoke_detector[status="idle"]   .badge { background: var(--hi-smoke-idle-bg);   color: var(--hi-smoke-idle-color); }
+.hi-state-panel-smoke_detector[status="active"] .badge { background: var(--hi-smoke-active-bg); color: var(--hi-smoke-active-color); }
+.hi-state-panel-smoke_detector[status="recent"] .badge { background: var(--hi-smoke-recent-bg); color: var(--hi-smoke-recent-color); }
+.hi-state-panel-smoke_detector[status="past"]   .badge { background: var(--hi-smoke-past-bg);   color: var(--hi-smoke-past-color); }
+
+.hi-state-panel-smoke_detector .status-label { font-weight: 600; }
+.hi-state-panel-smoke_detector[status="idle"]   .status-label { color: var(--hi-smoke-idle-color); }
+.hi-state-panel-smoke_detector[status="active"] .status-label { color: var(--hi-smoke-active-color); }
+.hi-state-panel-smoke_detector[status="recent"] .status-label { color: var(--hi-smoke-recent-color); }
+.hi-state-panel-smoke_detector[status="past"]   .status-label { color: var(--hi-smoke-past-color); }
+
+/* ============================================================== */
+/* "Triggered X ago" detail line (recent / past only).            */
+/* ============================================================== */
+/* Visibility matches the status-label variants: hidden by default */
+/* and shown only when the panel root's decay-aware ``status``     */
+/* attribute is ``recent`` or ``past``. Idle and active suppress   */
+/* — idle has nothing to say, active is "now."                     */
+
+.hi-state-panel-smoke_detector .last-event {
+    display: none;
+    color: var(--text-muted, #6c757d);
+}
+.hi-state-panel-smoke_detector[status="recent"] .last-event,
+.hi-state-panel-smoke_detector[status="past"]   .last-event {
+    display: block;
+}
+
+/* Alarm-state pulse to draw attention. */
+.hi-state-panel-smoke_detector[status="active"] .icon--active {
+    animation: hi-smoke-alarm-pulse 1.2s ease-in-out infinite;
+}
+@keyframes hi-smoke-alarm-pulse {
+    0%, 100% { transform: scale(1);    opacity: 1; }
+    50%      { transform: scale(1.08); opacity: 0.85; }
+}
+
+/* ============================================================== */
+/* Modal layout                                                   */
+/* ============================================================== */
+
+.hi-state-panel-smoke_detector--modal .hero {
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+}
+.hi-state-panel-smoke_detector--modal .badge { width: 120px; height: 120px; }
+.hi-state-panel-smoke_detector--modal .status-label {
+    font-size: 22px;
+    line-height: 1.1;
+}
+.hi-state-panel-smoke_detector--modal .last-event {
+    font-size: 13px;
+    line-height: 1.2;
+}
+.hi-state-panel-smoke_detector--modal .auxiliary {
+    border-top: 1px solid var(--line-color, #d0d7de);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-around;
+}
+.hi-state-panel-smoke_detector--modal .aux-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+.hi-state-panel-smoke_detector--modal .aux-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #6c757d);
+    font-weight: 600;
+}
+.hi-state-panel-smoke_detector--modal .aux-value { font-size: 14px; font-weight: 500; }
+
+/* ============================================================== */
+/* Row card layout: badge + name + status + last-event + aux all     */
+/* on one horizontal line.                                            */
+/* ============================================================== */
+
+.hi-state-panel-smoke_detector--row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    min-height: var(--hi-panel-row-min-height);
+}
+.hi-state-panel-smoke_detector--row .badge { width: 44px; height: 44px; flex-shrink: 0; }
+.hi-state-panel-smoke_detector--row .entity-name {
+    font-size: 14px; font-weight: 600; line-height: 1.2;
+    flex: 0 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.hi-state-panel-smoke_detector--row .status-label {
+    font-size: 13px;
+    flex-shrink: 0;
+}
+/* margin-left: auto on both last-event and aux-bits pushes the      */
+/* right-most group to the right edge. Whichever of the two appears  */
+/* first consumes the available free space; the other sits flush     */
+/* next to it. Works for all combinations (either present, both      */
+/* present, neither present).                                         */
+.hi-state-panel-smoke_detector--row .last-event {
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--text-muted, #6c757d);
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.hi-state-panel-smoke_detector--row .aux-bits {
+    font-size: 11px;
+    color: var(--text-muted, #6c757d);
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* ============================================================== */
+/* Grid card layout                                               */
+/* ============================================================== */
+
+.hi-state-panel-smoke_detector--tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 12px;
+    gap: 6px;
+    height: 100%;
+}
+.hi-state-panel-smoke_detector--tile .badge { width: 72px; height: 72px; margin-top: 6px; }
+.hi-state-panel-smoke_detector--tile .status-label { font-size: 13px; line-height: 1.1; }
+.hi-state-panel-smoke_detector--tile .entity-name {
+    font-size: 10px;
+    color: var(--text-muted, #6c757d);
+    line-height: 1.2;
+    margin-top: 4px;
+}
+.hi-state-panel-smoke_detector--tile[status="idle"],
+.hi-state-panel-smoke_detector--row[status="idle"]   { background: var(--hi-smoke-idle-bg); }
+.hi-state-panel-smoke_detector--tile[status="active"],
+.hi-state-panel-smoke_detector--row[status="active"] { background: var(--hi-smoke-active-bg); }
+.hi-state-panel-smoke_detector--tile[status="recent"],
+.hi-state-panel-smoke_detector--row[status="recent"] { background: var(--hi-smoke-recent-bg); }
+.hi-state-panel-smoke_detector--tile[status="past"],
+.hi-state-panel-smoke_detector--row[status="past"]   { background: var(--hi-smoke-past-bg); }
+
+/* ============================================================== */
+/* Battery low-state escalation.                                  */
+/* ============================================================== */
+/* The polling pipeline emits ``status="low"`` on BATTERY_LEVEL    */
+/* elements when the value is below the framework threshold        */
+/* (see EntityStateDisplayData.BATTERY_LOW_THRESHOLD_PCT). The     */
+/* aux-value text colors red; the grid card surfaces a dedicated   */
+/* "Low Battery" warning only in the low state.                    */
+
+.hi-state-panel-smoke_detector--modal .aux-value[status="low"] {
+    color: var(--hi-smoke-active-color);
+    font-weight: 600;
+}
+.hi-state-panel-smoke_detector--row .aux-bits span[status="low"] {
+    color: var(--hi-smoke-active-color);
+    font-weight: 600;
+}
+
+.hi-state-panel-smoke_detector--tile .low-battery-warning {
+    display: none;
+    margin-top: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--hi-smoke-active-color);
+}
+.hi-state-panel-smoke_detector--tile .low-battery-warning[status="low"] {
+    display: block;
+}

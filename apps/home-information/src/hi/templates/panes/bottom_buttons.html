@@ -1,0 +1,46 @@
+{% load icons %}
+<div class="p-1">
+  <div class="d-flex justify-content-between hi-button-bar">
+    {% if request.view_parameters.is_editing %}
+    <div class="hi-button-bar-fixed px-1">
+      <a href="{% url 'collection_add' %}"
+         class="btn btn-add btn-control" role="button"
+         data-async="modal" >
+        {% icon "plus" css_class="hi-icon-left" %}ADD COLLECTION
+      </a>
+    </div>
+    {% endif %}
+    {% include "collection/panes/collection_buttons.html" %}
+    <div class="d-flex justify-content-end hi-button-bar-fixed">
+      {% if request.view_parameters.is_editing %}
+      <div class="mx-1 d-flex align-items-center">
+        {% include "panes/snap_grid_input.html" %}
+      </div>
+      <div class="mx-1">
+        <a href="{% url 'profiles_edit_reference_help' %}"
+           class="btn btn-tertiary btn-control" role="button"
+           data-async="true" >
+          {% icon "question-circle" css_class="hi-icon-left" %}EDIT HELP
+        </a>
+      </div>
+      {% else %}
+      <div class="mx-1">
+        {% include "console/panes/audio_control.html" %}
+      </div>
+      <div class="mx-1">
+        {% include "console/panes/sleep_mode_control.html" %}
+      </div>
+      <div class="mx-1">
+        {% include "console/panes/console_lock_button.html" %}
+      </div>
+      <div class="mx-1">
+        <a href="{% url 'config_home' %}"
+           class="btn btn-tertiary btn-control" role="button"
+           data-async="true" >
+          {% icon "settings" css_class="hi-icon-left" %}CONFIGURE
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>

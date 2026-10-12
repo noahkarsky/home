@@ -1,0 +1,15 @@
+{% load icons %}
+<div class="d-flex justify-content-start draggable-container hi-button-bar-flex">
+  {% for location_view in location_view_list %}
+  <div id="{{ location_view.html_id }}-button"
+       class="{% if request.view_parameters.is_editing %}draggable{% endif %} mx-1"
+       {% if request.view_parameters.is_editing %}draggable="true"{% endif %}
+       >
+    <a href="{% url 'location_view' location_view_id=location_view.id %}"
+       class="btn {% if location_view == request.view_parameters.active_location_view %}btn-secondary{% else %}btn-primary{% endif %} btn-control"
+       role="button" >
+      {{ location_view.name|truncatechars:18 }}
+    </a>
+  </div>
+  {% endfor %}
+</div>

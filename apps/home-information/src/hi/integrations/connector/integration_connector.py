@@ -1,0 +1,492 @@
+"""
+Per-integration connector base class.
+
+The general integration framework owns the sync workflow (pre-sync
+confirmation modal, sync execution view, post-sync placement modal).
+The connector is the per-integration participant that the framework
+hands off to for the integration-specific work plus a small amount of
+peripheral metadata the framework surfaces alongside.
+
+Each integration that supports sync provides a concrete subclass and
+returns an instance of it from `IntegrationGateway.get_connector()`.
+Sync is opt-in: a gateway whose integration does not support sync
+returns None.
+"""
+import logging
+from typing import Any, Dict, Optional
+
+from django.db import transaction
+
+from hi.apps.common.database_lock import ExclusionLockContext
+from hi.apps.entity.models import Entity
+from hi.apps.entity.transient_models import VideoSnapshot, VideoStream
+from hi.apps.monitor.periodic_monitor import PeriodicMonitor
+from hi.apps.sense.transient_models import SensorResponse
+from hi.apps.system.health_status_provider import HealthStatusProvider
+
+from hi.integrations.capability_gateway import CapabilityGateway
+from hi.integrations.entity_operations import EntityIntegrationOperations
+from hi.integrations.enums import IntegrationCapability
+from .external_view_data import ExternalViewData
+from .integration_controller import IntegrationController
+from .sync_check import IntegrationSyncCheck, SyncDelta
+from .sync_preview import IntegrationSyncPreviewer
+from .sync_result import IntegrationSyncResult, IntegrationSyncPreviewResult
+from hi.integrations.transient_models import IntegrationKey
+
+logger = logging.getLogger(__name__)
+
+
+class IntegrationConnector( CapabilityGateway ):
+    """
+    Base class for per-integration connectors.
+
+    The framework calls `sync()`. The base implementation acquires a
+    process-wide synchronization lock, delegates to the subclass's
+    `_sync_impl()`, and converts unexpected RuntimeError into a result
+    object. Subclasses implement the integration-specific work in
+    `_sync_impl()` and the small metadata accessors below.
+
+    Synchronization is process-wide rather than per-integration: at
+    most one integration sync runs at a time. Concurrent syncs across
+    integrations could race over shared infrastructure (entity tables,
+    location-view bookkeeping).
+    """
+
+    capability = IntegrationCapability.CONNECT
+
+    SYNCHRONIZATION_LOCK_NAME = 'integrations_sync'
+
+    def get_sync_description(self, is_initial_connect: bool) -> Optional[str]:
+        """
+        Optional copy describing what this integration's sync will do,
+        surfaced to the operator in the framework's pre-sync
+        confirmation modal alongside a generic lead message.
+
+        `is_initial_connect` distinguishes the first-time IMPORT (no
+        entities have been imported yet) from subsequent REFRESH
+        operations. The two contexts mean different things to the
+        operator and integrations are encouraged to provide tailored
+        copy for each. Return None to render only the generic lead
+        text.
+        """
+        return None
+
+    def get_result_title(self, is_initial_connect: bool) -> str:
+        """
+        Short, generic header for the sync result modal: 'Connect
+        Result' for the first-time path, 'Update Check Result'
+        otherwise. The integration's identity is surfaced in the
+        modal body rather than the title bar so title-bar contrast
+        stays predictable regardless of integration.
+        """
+        if is_initial_connect:
+            return 'Connect Result'
+        return 'Update Check Result'
+
+    def get_monitor(self) -> Optional[PeriodicMonitor]:
+        """Return the integration's periodic monitor when it has one;
+        None otherwise. The monitor polls upstream state for live
+        sensor responses and surfaces health status. Connect-only
+        by nature -- Import has no ongoing connection to monitor."""
+        return None
+
+    def get_controller(self) -> Optional[IntegrationController]:
+        """Return the integration's controller when it accepts control
+        actions; None otherwise. The controller routes a control value
+        from HI to the upstream system. Connect-only -- Import-mode
+        entities are HI-owned and their controllers are HI-native."""
+        return None
+
+    def get_health_status_provider(self) -> HealthStatusProvider:
+        """Return the integration's health status provider. Every
+        Connect-capable integration must surface one so the framework's
+        health banners and System Info page can report upstream
+        availability."""
+        raise NotImplementedError('Subclasses must override this method')
+
+    def get_attribute_actions_template_name(self) -> Optional[str]:
+        """Per-capability template fragment to render in the
+        integration attribute form's action bar. CONNECT contributes
+        the health-status badge that links to the health-detail
+        modal. Individual integrations can override to substitute
+        their own fragment."""
+        return 'integrations/connector/panes/connect_attribute_actions.html'
+
+    def get_entity_video_stream(self, entity: Entity) -> Optional[VideoStream]:
+        """Return the live video stream for ``entity``, or ``None`` when
+        the integration cannot produce one. Opt-in capability."""
+        return None
+
+    def get_entity_video_snapshot(self, entity: Entity) -> Optional[VideoSnapshot]:
+        """Return a fresh still-image snapshot for ``entity``, or
+        ``None`` when the integration cannot produce one. Opt-in
+        capability."""
+        return None
+
+    def get_sensor_response_video_stream(
+            self,
+            sensor_response: SensorResponse) -> Optional[VideoStream]:
+        """Return the recorded video stream for a SensorResponse
+        carrying an event clip, or ``None`` when the integration
+        cannot produce one. Opt-in capability."""
+        return None
+
+    def get_sensor_response_event_snapshot_url(
+            self,
+            sensor_response: SensorResponse) -> Optional[str]:
+        """Return the URL to the per-event captured snapshot frame for
+        a SensorResponse, or ``None`` when the integration cannot
+        produce one. Generated at render time from the event id so the
+        URL always reflects current integration configuration (e.g.,
+        an operator who moves the upstream host doesn't get stale
+        URLs on historical rows). Pair with
+        ``SensorResponse.has_event_video_snapshot`` -- only call when
+        the flag is True."""
+        return None
+
+    def get_external_view_data(self, entity: Entity) -> Optional[ExternalViewData]:
+        """Return the external-data view payload for the entity-detail
+        modal. Return ``None`` if this integration has no external view
+        for ``entity`` -- the external-data region is then suppressed.
+
+        Defaults to ``None``; integrations whose data lives upstream
+        override this hook to return a populated ``ExternalViewData``
+        subclass (typically ``StructuredViewData``)."""
+        return None
+
+    def sync(self,
+             is_initial_connect   : bool,
+             preserve_user_data  : bool = True,
+             ) -> IntegrationSyncResult:
+        """
+        Public entry point used by the framework. Wraps `_sync_impl`
+        with the sync lock and standard error handling. Subclasses
+        override `_sync_impl` rather than this method.
+
+        ``is_initial_connect`` is the operator-intent flag from the
+        sync flow (Import for first-time, Refresh otherwise);
+        threaded down so each subclass can title its result
+        consistently.
+
+        ``preserve_user_data`` controls how user-data entities are
+        handled when the sync drops them as no-longer-present
+        upstream: True (default) detaches them; False hard-deletes
+        them. Stored on the instance for the duration so
+        ``_remove_entity_intelligently`` can read it without
+        threading the flag through every subclass's ``_sync_impl``;
+        the process-wide ``SYNCHRONIZATION_LOCK_NAME`` precludes
+        concurrent syncs.
+        """
+        self._preserve_user_data = preserve_user_data
+        try:
+            with ExclusionLockContext(name=self.SYNCHRONIZATION_LOCK_NAME):
+                logger.debug(f'{self.__class__.__name__} sync started.')
+                result = self._sync_impl(is_initial_connect=is_initial_connect)
+        except RuntimeError as e:
+            logger.exception(e)
+            result = IntegrationSyncResult(
+                title=self.get_result_title(is_initial_connect=is_initial_connect),
+                error_list=[str(e)],
+            )
+        finally:
+            logger.debug(f'{self.__class__.__name__} sync ended.')
+
+        self._record_sync_check_complete_if_successful( result = result )
+        try:
+            self.post_sync( result = result )
+        except Exception:
+            # Post-sync hook failures must not mask the sync result;
+            # log the traceback so the failure is debuggable.
+            logger.exception(
+                f'{self.__class__.__name__} post_sync hook failed'
+            )
+        return result
+
+    def _record_sync_check_complete_if_successful(
+            self, result : IntegrationSyncResult ) -> None:
+        """A successful sync brings HI in line with upstream as of right
+        now. Write a zero-delta sync-check result with the current
+        timestamp so UI surfaces clear immediately and the next
+        background probe has a fresh baseline. Cache write failures must
+        not propagate -- the sync itself succeeded and the caller's
+        flow should continue regardless."""
+        if result.error_list:
+            return
+        try:
+            metadata = self.get_metadata()
+        except NotImplementedError:
+            return
+        try:
+            IntegrationSyncCheck.record_sync_complete(
+                integration_id = metadata.integration_id,
+                integration_label = metadata.label,
+            )
+        except Exception as e:
+            logger.warning(
+                f'Failed to record sync-check completion for '
+                f'{metadata.integration_id}: {e}'
+            )
+        return
+
+    def post_sync(self, result : IntegrationSyncResult) -> None:
+        """Hook for integration-specific work that must happen after a
+        sync completes (and after the sync lock has been released).
+        Sync mutates entity/sensor records; integrations whose
+        process-level state derives from those records should refresh
+        here. Default is no-op.
+
+        Runs regardless of result.error_list -- partial syncs may have
+        committed enough changes to invalidate process-level state."""
+        return
+
+    def _sync_impl(self, is_initial_connect: bool) -> IntegrationSyncResult:
+        """
+        Integration-specific sync work. Subclasses must override.
+        Called with the synchronization lock held.
+        """
+        raise NotImplementedError('Subclasses must override this method')
+
+    @property
+    def supports_preview(self) -> bool:
+        """Whether this connector can produce a sync preview without
+        committing changes. True when the subclass overrides either
+        ``_sync_preview_impl`` (higher-fidelity preview) or
+        ``check_needs_sync`` (the framework default impl is built on
+        the latter). The pre-sync modal's Preview affordance is gated
+        on this so connectors that opt out of both don't surface a
+        non-functional button.
+
+        Structural check (method override detection) rather than a
+        runtime probe so it stays cheap and succeeds before upstream
+        connectivity is established.
+        """
+        if type(self)._sync_preview_impl is not IntegrationConnector._sync_preview_impl:
+            return True
+        return type(self).check_needs_sync is not IntegrationConnector.check_needs_sync
+
+    def sync_preview(self,
+                     is_initial_connect : bool,
+                     preserve_user_data : bool = True,
+                     ) -> IntegrationSyncPreviewResult:
+        """Public preview entry point. Parallels ``sync()`` but commits
+        no upstream or HI changes -- the framework default impl uses
+        ``check_needs_sync()`` (a cheap read-only upstream probe) and
+        higher-fidelity overrides are expected to honor the same
+        no-mutation contract.
+
+        Acquires the same lock as ``sync()`` so the preview reflects
+        the same DB state a real sync would see, and a real sync can't
+        race in mid-preview. Skips ``post_sync`` and the sync-check
+        cache write that ``sync()`` performs on success -- both are
+        side effects of a real sync and don't apply to preview.
+
+        Subclasses override ``_sync_preview_impl`` when they want
+        higher-fidelity preview than what ``check_needs_sync`` can
+        provide; the public entry point stays the same.
+        """
+        try:
+            with ExclusionLockContext(name=self.SYNCHRONIZATION_LOCK_NAME):
+                logger.debug(f'{self.__class__.__name__} sync_preview started.')
+                result = self._sync_preview_impl(
+                    is_initial_connect = is_initial_connect,
+                    preserve_user_data = preserve_user_data,
+                )
+        except Exception as e:
+            # Broad catch: any failure during preview must surface in
+            # the result modal as an error rather than crashing the
+            # view or -- worse -- silently rendering the "Nothing new"
+            # state. Preview is a read-only diagnostic; an
+            # unobservable failure defeats the purpose.
+            logger.exception(e)
+            result = IntegrationSyncPreviewResult(
+                title = self.get_result_title(is_initial_connect=is_initial_connect),
+                error_list = [str(e) or e.__class__.__name__],
+            )
+        finally:
+            logger.debug(f'{self.__class__.__name__} sync_preview ended.')
+        return result
+
+    def _sync_preview_impl(self,
+                           is_initial_connect : bool,
+                           preserve_user_data : bool,
+                           ) -> IntegrationSyncPreviewResult:
+        """Default preview implementation. Delegates to
+        ``IntegrationSyncPreviewer.build_from_check`` which leverages
+        the integration's ``check_needs_sync`` drift probe.
+
+        Subclasses with cleanly-separated change-detection logic
+        (e.g., a synchronizer whose ``_sync_impl`` accepts a
+        ``dry_run`` flag) override this method to deliver
+        full-fidelity preview.
+        """
+        return IntegrationSyncPreviewer.build_from_check(
+            check_needs_sync_callable = self.check_needs_sync,
+            result_title = self.get_result_title(
+                is_initial_connect = is_initial_connect,
+            ),
+            preserve_user_data = preserve_user_data,
+        )
+
+    async def check_needs_sync(self) -> Optional[SyncDelta]:
+        """Periodic sync-check probe. Return a ``SyncDelta`` describing
+        how upstream has drifted from HI's current state, or ``None``
+        to opt out.
+
+        The framework monitor invokes this on each enabled+unpaused
+        integration's synchronizer once per cycle. Implementations
+        should do a *cheap* upstream fetch -- the probe is purely
+        informational and runs even when no user action is in
+        progress -- and delegate the comparison to
+        ``IntegrationSyncCheck.compute_delta``. The framework wraps
+        the returned delta into a ``SyncCheckResult`` and caches it;
+        subclasses do not touch the cache directly.
+
+        Failures (client unavailable, upstream unreachable) should
+        propagate; the framework monitor's per-call try/except
+        classifies the cycle as ERROR for that integration and
+        continues with the others.
+
+        Default returns ``None`` -- opt-out. Sync-check is opt-in even
+        among integrations that support full sync.
+        """
+        return None
+
+    def reconnect_disconnected_items(
+            self,
+            integration_key_to_upstream : Dict[ IntegrationKey, Any ],
+            integration_key_to_entity   : Dict[ IntegrationKey, Entity ],
+            result                      : IntegrationSyncResult ):
+        """
+        Framework-level auto-reconnect. Each integration contributes
+        only the minimal piece that's genuinely integration-specific:
+        the converter dispatch via
+        ``_rebuild_integration_components()``.
+
+        For each unmatched upstream key with a unique secondary
+        match, this method:
+
+          * clears the previous-identity columns,
+          * dispatches to ``_rebuild_integration_components()`` so the
+            integration's converter repopulates the integration-owned
+            components on the existing entity,
+          * appends the entity name to ``result.reconnected_list``
+            and to ``result.info_list``,
+          * inserts the reconnected entity into
+            ``integration_key_to_entity`` so the synchronizer's main
+            loop sees it as primary-matched and gives it the standard
+            update / attribute-sync treatment without any
+            reconnect-specific branching.
+
+        The entity's ``name`` is deliberately not touched: the user
+        may have edited it before or after the intervening detach,
+        and the detached/connected distinction is signaled
+        structurally via the integration_id / previous_integration_id
+        columns rather than by a name-string convention.
+
+        Ambiguous secondary matches are handled inside
+        ``find_reconnect_candidates``: dropped silently, with a
+        WARNING log + ``info_list`` breadcrumb so the operator can
+        find them and resolve via merge.
+        """
+        unmatched_upstream_keys = [
+            integration_key for integration_key in integration_key_to_upstream
+            if integration_key not in integration_key_to_entity
+        ]
+        if not unmatched_upstream_keys:
+            return
+
+        metadata = self.get_metadata()
+        candidates = EntityIntegrationOperations.find_reconnect_candidates(
+            integration_id = metadata.integration_id,
+            upstream_keys = unmatched_upstream_keys,
+            result = result,
+        )
+        if not candidates:
+            return
+
+        for upstream_key, entity in candidates.items():
+            # Wrap each reconnect in its own atomic boundary so a
+            # mid-batch converter failure rolls back that single
+            # entity's changes (including the cleared previous
+            # identity) without aborting reconnects already
+            # committed for prior entities. The result-list appends
+            # are inside the boundary so they stay consistent with
+            # the persisted state.
+            with transaction.atomic():
+                entity.previous_integration_key = None
+                self._rebuild_integration_components(
+                    entity = entity,
+                    upstream = integration_key_to_upstream[ upstream_key ],
+                    result = result,
+                )
+                # The disconnect path set is_disabled=True (the
+                # capability gate that hides detached entities from
+                # capability-filtered listings). Reconnect is the
+                # symmetric clear: the entity is integration-attached
+                # again and should participate in those listings.
+                # Capability flags like has_video_stream are
+                # converter-owned and should already have been
+                # re-established by _rebuild_integration_components.
+                entity.is_disabled = False
+                # Defensive save: subclasses' converters typically
+                # save the entity themselves, but the framework
+                # explicitly persists the cleared previous-identity
+                # and is_disabled fields so a future converter that
+                # only writes related rows cannot leave the entity
+                # in a half-reconnected state.
+                entity.save(
+                    update_fields = [
+                        'previous_integration_id',
+                        'previous_integration_name',
+                        'is_disabled',
+                    ],
+                )
+                result.reconnected_list.append( entity.name )
+                result.info_list.append(
+                    f'Auto-reconnected {metadata.label} item "{entity.name}"'
+                )
+                integration_key_to_entity[ upstream_key ] = entity
+        return
+
+    def _rebuild_integration_components( self,
+                                         entity   : Entity,
+                                         upstream : Any,
+                                         result   : IntegrationSyncResult ):
+        """
+        Subclass hook for the auto-reconnect path. Given an existing
+        Entity (the previously-disconnected one) and the upstream
+        payload for it, repopulate the entity's integration-owned
+        components by dispatching to the integration's converter with
+        the existing-entity parameter set.
+
+        The base class raises NotImplementedError; subclasses must
+        override to participate in auto-reconnect.
+        """
+        raise NotImplementedError(
+            f'{self.__class__.__name__} must override '
+            f'_rebuild_integration_components() to participate in '
+            f'auto-reconnect.'
+        )
+
+    def _remove_entity_intelligently(self,
+                                     entity: Entity,
+                                     result: IntegrationSyncResult):
+        """
+        Remove an entity that no longer exists in the integration.
+
+        Delegates to ``EntityIntegrationOperations.remove_entities_with_closure``.
+        The closure walk picks up delegate entities (e.g., the Area
+        auto-created when a camera was placed in a view) when their
+        only remaining principal is being removed. Whether
+        operator-added attributes trigger the detach-and-preserve
+        branch is controlled by ``self._preserve_user_data`` (set on
+        ``sync()`` entry; defaults to True / preserve when not
+        explicitly set).
+        """
+        EntityIntegrationOperations.remove_entities_with_closure(
+            seed_entity_ids = { entity.id },
+            integration_name = self.get_metadata().label,
+            preserve_user_data = getattr( self, '_preserve_user_data', True ),
+            result = result,
+        )

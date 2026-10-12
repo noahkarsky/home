@@ -1,0 +1,11 @@
+<div class="attr-v2-external-minimal">
+
+  {% if view_data.error_message %}
+  <div class="alert alert-warning attr-ext-minimal-error" role="alert">
+    {{ view_data.error_message }}
+  </div>
+  {% elif not view_data.deep_link_url %}
+  <p class="text-muted">External data unavailable.</p>
+  {% endif %}
+
+</div>

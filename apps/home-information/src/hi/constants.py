@@ -1,0 +1,231 @@
+TIME_OF_DAY_CHOICES = [
+    ( f'{hour:02}:{minute:02}',
+      f'{hour:02}:{minute:02} ({(hour % 12 or 12):02}:{minute:02} {"a.m." if hour < 12 else "p.m."})' )
+    for hour in range(24) for minute in range(0, 60, 15)
+]
+
+
+TIMEZONE_NAME_LIST = [
+    'UTC',
+    'America/New_York',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Toronto',
+    'America/Mexico_City',
+    'America/Sao_Paulo',
+    'Europe/London',
+    'Europe/Berlin',
+    'Europe/Paris',
+    'Europe/Moscow',
+    'Asia/Dubai',
+    'Asia/Tokyo',
+    'Asia/Seoul',
+    'Asia/Shanghai',
+    'Asia/Hong_Kong',
+    'Asia/Singapore',
+    'Asia/Kolkata',
+    'Asia/Jakarta',
+    'Australia/Sydney',
+    'Australia/Melbourne',
+    'Africa/Johannesburg',
+    'Africa/Lagos',
+    'Africa/Cairo',
+    'America/Argentina/Buenos_Aires',
+]
+
+    
+# HTML div ids (classes and attributes) that app logic depends on.
+DIVID = {
+
+    # Main HI Grid Structure
+    'TOP': 'hi-top-content',
+    'BOTTOM': 'hi-bottom-content',
+    'MAIN': 'hi-main-content',
+    'SIDE': 'hi-side-content',
+
+    'LOCATION_PROPERTIES_PANE': 'hi-location-properties',
+    'LOCATION_VIEW_EDIT_PANE': 'hi-location-view-edit',
+    'COLLECTION_EDIT_PANE': 'hi-collection-edit',
+    'ENTITY_PROPERTIES_PANE': 'hi-entity-properties',
+    'ENTITY_POSITION_EDIT_PANE': 'hi-entity-position-edit',
+    'COLLECTION_POSITION_EDIT_PANE': 'hi-collection-position-edit',
+
+    'ATTRIBUTE_CONTAINER_CLASS': 'hi-attribute',
+
+    'SIDEBAR_NOTICE': 'hi-sidebar-notice',
+    'ALERT_BANNER_CONTAINER': 'hi-alert-banner-container',
+    'ALERT_BANNER_CONTENT': 'hi-alert-banner-content',
+    'SECURITY_STATE_CONTROL': 'hi-security-state-control',
+    'WEATHER_OVERVIEW': 'hi-weather-overview',
+    
+    'CONSOLE_LOCK_BUTTON': 'hi-console-lock-button',
+    
+    # Attribute Editing
+    'ATTR_V2_CONTAINER_ID': 'attr-v2-container',
+    'ATTR_V2_CONTAINER_CLASS': 'attr-v2-container',
+    'ATTR_V2_FORM_ID': 'attr-v2-form',
+    'ATTR_V2_FORM_CLASS': 'attr-v2-form',
+    'ATTR_V2_CONTENT_ID': 'attr-v2-content',
+    'ATTR_V2_CONTENT_CLASS': 'attr-v2-content',
+    'ATTR_V2_UPLOAD_FORM_CONTAINER_ID': 'attr-v2-upload-form-container',
+    'ATTR_V2_FILE_GRID_ID': 'attr-v2-file-grid',
+    'ATTR_V2_FILE_GRID_CLASS': 'attr-v2-file-grid',
+    'ATTR_V2_STATUS_MESSAGE_ID': 'attr-v2-status-message',
+    'ATTR_V2_STATUS_MESSAGE_CLASS': 'attr-v2-status-message',
+    'ATTR_V2_DIRTY_MESSAGE_ID': 'attr-v2-dirty-message',
+    'ATTR_V2_DIRTY_MESSAGE_CLASS': 'attr-v2-dirty-message',
+    'ATTR_V2_UPDATE_BTN_ID': 'attr-v2-update-btn',
+    'ATTR_V2_UPDATE_BTN_CLASS': 'attr-v2-update-btn',
+    'ATTR_V2_ATTRIBUTE_CARD_CLASS': 'attr-v2-attribute-card',
+    'ATTR_V2_NEW_ATTRIBUTE_CLASS': 'attr-v2-new-attribute',
+    'ATTR_V2_FILE_TITLE_INPUT_CLASS': 'attr-v2-file-title-input',
+    'ATTR_V2_FILE_INFO_CLASS': 'attr-v2-file-info',
+    'ATTR_V2_ATTRIBUTE_NAME_CLASS': 'attr-v2-attribute-name',
+    'ATTR_V2_DELETE_BTN_CLASS': 'attr-v2-delete-btn',
+    'ATTR_V2_UNDO_BTN_CLASS': 'attr-v2-undo-btn',
+    'ATTR_V2_FILE_CARD_CLASS': 'attr-v2-file-card',
+    'ATTR_V2_FILE_NAME_CLASS': 'attr-v2-file-filename',
+    'ATTR_V2_SECRET_INPUT_WRAPPER_CLASS': 'attr-v2-secret-input-wrapper',
+    'ATTR_V2_SECRET_INPUT_CLASS': 'attr-v2-secret-input',
+    'ATTR_V2_ICON_SHOW_CLASS': 'attr-v2-icon-show',
+    'ATTR_V2_ICON_HIDE_CLASS': 'attr-v2-icon-hide',
+    'ATTR_V2_TEXTAREA_CLASS': 'attr-v2-textarea',
+    'ATTR_V2_TEXT_VALUE_WRAPPER_CLASS': 'attr-v2-text-value-wrapper',
+    'ATTR_V2_EXPAND_CONTROLS_CLASS': 'attr-v2-expand-controls',
+    'ATTR_V2_FILE_INPUT_ID': 'attr-v2-file-input',
+    'ATTR_V2_FILE_INPUT_CLASS': 'attr-v2-file-input',
+    'ATTR_V2_ADD_ATTRIBUTE_BTN_ID': 'attr-v2-add-attribute-btn',
+    'ATTR_V2_SCROLLABLE_CONTENT_ID': 'attr-v2-scrollable-content',
+    'ATTR_V2_SCROLLABLE_CONTENT_CLASS': 'attr-v2-scrollable-content',
+    'ATTR_V2_AUTO_DISMISS_CLASS': 'attr-v2-auto-dismiss',
+    'ATTR_V2_HISTORY_LINK_CLASS': 'attr-v2-history-link',
+    'ATTR_V2_RESTORE_LINK_CLASS': 'attr-v2-restore-link',
+    'ATTR_V2_STICKY_PANEL_CLASS': 'attr-v2-sticky-panel',
+    'ATTR_V2_ACTION_BAR_CLASS': 'attr-v2-action-bar',
+    'ATTR_V2_ACTION_BAR_CONTENT_CLASS': 'attr-v2-action-bar-content',
+    'ATTR_V2_ACTION_BUTTONS_CLASS': 'attr-v2-action-buttons',
+    'ATTR_V2_HISTORY_INLINE_CONTENT_CLASS': 'attr-v2-history-inline-content',
+    'ATTR_V2_HISTORY_HEADER_CLASS': 'attr-v2-history-header',
+    'ATTR_V2_HISTORY_CLOSE_CLASS': 'attr-v2-history-close',
+    'ATTR_V2_HISTORY_CURRENT_CLASS': 'attr-v2-history-current',
+    'ATTR_V2_HISTORY_RECORDS_CLASS': 'attr-v2-history-records',
+    'ATTR_V2_HISTORY_RECORD_CLASS': 'attr-v2-history-record',
+    'ATTR_V2_HISTORY_TOGGLE_CLASS': 'attr-v2-history-toggle',
+    'ATTR_V2_HISTORY_EMPTY_CLASS': 'attr-v2-history-empty',
+    'ATTR_V2_ATTRIBUTE_HEADER_CLASS': 'attr-v2-attribute-header',
+    'ATTR_V2_ATTRIBUTE_ACTIONS_CLASS': 'attr-v2-attribute-actions',
+    'ATTR_V2_ATTRIBUTE_VALUE_CLASS': 'attr-v2-attribute-value',
+    'ATTR_V2_FORM_DISPLAY_LABEL_CLASS': 'attr-v2-form-display-label',
+    'ATTR_V2_TEXT_VALUE_CLASS': 'attr-v2-text-value',
+    'ATTR_V2_SECRET_CHECKBOX_CLASS': 'attr-v2-secret-checkbox',
+    'ATTR_V2_INLINE_HISTORY_CLASS': 'attr-v2-inline-history',
+    'ATTR_V2_TEXT_READ_MODE_CLASS': 'attr-v2-text-read-mode',
+    'ATTR_V2_TEXT_READ_CONTENT_CLASS': 'attr-v2-text-read-content',
+    'ATTR_V2_TEXT_EDIT_MODE_CLASS': 'attr-v2-text-edit-mode',
+    'ATTR_V2_TEXT_EDIT_FIELD_CLASS': 'attr-v2-text-edit-field',
+    'ATTR_V2_TEXT_EDIT_ACTIONS_CLASS': 'attr-v2-text-edit-actions',
+    'ATTR_V2_DISPLAY_FIELD_CLASS': 'display-field',
+    'ATTR_V2_SHOW_MORE_TEXT_CLASS': 'show-more-text',
+    'ATTR_V2_SHOW_LESS_TEXT_CLASS': 'show-less-text',
+    'ATTR_V2_DELETE_FILE_ATTR': 'delete_file_attribute',
+
+    # Controller widgets - Class names and data attributes shared
+    # between controller templates (server-emitted) and
+    # controllers.js (client-side display sync, preset buttons).
+    'CONTROLLER_DISPLAY_TARGET_ATTR': 'data-display-target',
+    'CONTROLLER_DISPLAY_FORMAT_ATTR': 'data-display-format',
+    'CONTROLLER_SLIDER_CLASS': 'hi-continuous-slider',
+    'CONTROLLER_SLIDER_CONTROL_CLASS': 'hi-continuous-slider-control',
+    'CONTROLLER_PRESET_BTN_CLASS': 'hi-continuous-slider-preset-btn',
+    'DATA_VALUE_ATTR': 'data-value',
+
+    # Entity Picker - JavaScript dependencies only
+    'ENTITY_PICKER_FILTERABLE_ITEM_CLASS': 'filterable-item',
+    'ENTITY_PICKER_GROUP_SECTION_CLASS': 'entity-group-section',
+    'ENTITY_PICKER_SEARCH_INPUT_ID': 'entity-search-input',
+    'ENTITY_PICKER_SEARCH_CLEAR_CLASS': 'entity-search-clear',
+    'ENTITY_PICKER_FILTER_BTN_CLASS': 'entity-filter-btn',
+
+    # Entity Picker - Data attributes
+    'ENTITY_PICKER_DATA_NAME_ATTR': 'data-entity-name',
+    'ENTITY_PICKER_DATA_TYPE_ATTR': 'data-entity-type',
+    'ENTITY_PICKER_DATA_STATUS_ATTR': 'data-status',
+    'ENTITY_PICKER_DATA_FILTER_ATTR': 'data-filter',
+
+    # Entity Picker - Status values
+    'ENTITY_PICKER_STATUS_IN_VIEW': 'in-view',
+    'ENTITY_PICKER_STATUS_NOT_IN_VIEW': 'not-in-view',
+    'ENTITY_PICKER_STATUS_UNUSED': 'unused',
+
+    # Entity Picker - Filter values
+    'ENTITY_PICKER_FILTER_ALL': 'all',
+
+    # EXTERNAL_REFERENCE picker — DOM classes / data attributes
+    # / wire-format field names shared between the picker templates,
+    # the picker views, and external-reference-picker.js. Mirror these in
+    # ``src/hi/static/js/main.js`` (``Hi.REF_PICKER_*``).
+    'REF_PICKER_ROOT_CLASS': 'hi-ref-picker',
+    'REF_PICKER_CHIPS_CLASS': 'hi-ref-picker-chips',
+    'REF_PICKER_CHIPS_EMPTY_CLASS': 'hi-ref-picker-chips-empty',
+    'REF_PICKER_CHIP_REMOVE_CLASS': 'hi-ref-picker-chip-remove',
+    'REF_PICKER_RESULTS_CLASS': 'hi-ref-picker-results',
+    'REF_PICKER_SEARCH_FORM_CLASS': 'hi-ref-picker-search-form',
+    'REF_PICKER_ATTACH_FORM_CLASS': 'hi-ref-picker-attach-form',
+    'REF_PICKER_ATTACH_BTN_CLASS': 'hi-ref-picker-attach-btn',
+    'REF_PICKER_ATTACH_LABEL_CLASS': 'hi-ref-picker-attach-label',
+    'REF_PICKER_RESULT_CHECKBOX_CLASS': 'hi-ref-picker-result-checkbox',
+    'REF_PICKER_SEARCH_URL_ATTR': 'data-ref-picker-search-url',
+    'REF_PICKER_TITLE_ATTR': 'data-ref-picker-title',
+    'REF_PICKER_SOURCE_URL_ATTR': 'data-ref-picker-source-url',
+    'REF_PICKER_INTEGRATION_NAME_ATTR': 'data-ref-picker-integration-name',
+    'REF_PICKER_MIME_TYPE_ATTR': 'data-ref-picker-mime-type',
+    'REF_PICKER_QUERY_FIELD': 'query',
+    'REF_PICKER_LIMIT_FIELD': 'limit',
+    'REF_PICKER_ITEM_TYPE_FIELD': 'item_type',
+    'REF_PICKER_ITEM_ID_FIELD': 'item_id',
+    'REF_PICKER_INTEGRATION_ID_FIELD': 'integration_id',
+    'REF_PICKER_SELECTIONS_JSON_FIELD': 'selections_json',
+    'REF_PICKER_SELECTION_TITLE_KEY': 'title',
+    'REF_PICKER_SELECTION_URL_KEY': 'source_url',
+    'REF_PICKER_SELECTION_INTEGRATION_NAME_KEY': 'integration_name',
+    'REF_PICKER_SELECTION_MIME_TYPE_KEY': 'mime_type',
+    'REF_PICKER_SOURCE_BANNER_CLASS': 'hi-ref-picker-source-banner',
+    'REF_PICKER_SOURCE_BANNER_LOGO_CLASS': 'hi-ref-picker-source-banner-logo',
+    'REF_PICKER_SOURCE_BANNER_LABEL_CLASS': 'hi-ref-picker-source-banner-label',
+    'REF_PICKER_SOURCE_OPTION_CLASS': 'hi-ref-picker-source-option',
+    'REF_PICKER_SOURCE_ID_ATTR': 'data-ref-picker-source-id',
+    'REF_PICKER_SOURCE_LOGO_ATTR': 'data-ref-picker-source-logo',
+    'REF_PICKER_SOURCE_LABEL_ATTR': 'data-ref-picker-source-label',
+
+    # External-reference grid -- DOM classes, data attributes, and
+    # action endpoint URL names for the framework-rendered card grid
+    # on the entity/location edit pages. Mirror in
+    # ``src/hi/static/js/main.js`` (``Hi.EXT_REF_*``).
+    'EXT_REF_GRID_CLASS': 'hi-ext-ref-grid',
+    'EXT_REF_CARD_CLASS': 'hi-ext-ref-card',
+    'EXT_REF_TITLE_INPUT_CLASS': 'hi-ext-ref-title-input',
+    'EXT_REF_DELETE_BTN_CLASS': 'hi-ext-ref-delete-btn',
+    'EXT_REF_REORDER_LEFT_CLASS': 'hi-ext-ref-reorder-left',
+    'EXT_REF_REORDER_RIGHT_CLASS': 'hi-ext-ref-reorder-right',
+    'EXT_REF_REFERENCE_ID_ATTR': 'data-ext-ref-id',
+    'EXT_REF_OWNER_TYPE_ATTR': 'data-ext-ref-owner-type',
+    'EXT_REF_SOURCE_URL_ATTR': 'data-ext-ref-source-url',
+    'EXT_REF_TITLE_FIELD': 'title',
+    'EXT_REF_DIRECTION_FIELD': 'direction',
+    'EXT_REF_DIRECTION_LEFT': 'left',
+    'EXT_REF_DIRECTION_RIGHT': 'right',
+
+    # Location SVG Editor Grid Structure
+    'LOCATION_SVG_EDIT_TOP': 'hi-location-svg-editor-top',
+    'LOCATION_SVG_EDIT_BOTTOM': 'hi-location-svg-editor-bottom',
+    'LOCATION_SVG_EDIT_MAIN': 'hi-location-svg-editor-main',
+
+    # Location SVG Editor Elements
+    'LOCATION_SVG_EDIT_PALETTE': 'hi-svg-edit-palette',
+    'LOCATION_SVG_EDIT_SVG': 'hi-svg-edit-svg',
+    'LOCATION_SVG_EDIT_CANVAS': 'hi-svg-edit-canvas',
+    'LOCATION_SVG_EDIT_CANVAS_CONTAINER': 'hi-svg-edit-canvas-container',
+    'LOCATION_SVG_EDIT_CONFORMANCE_WARNING': 'hi-svg-edit-conformance-warning',
+
+}

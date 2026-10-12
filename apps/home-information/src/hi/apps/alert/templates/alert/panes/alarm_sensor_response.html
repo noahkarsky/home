@@ -1,0 +1,46 @@
+{% load video_tags %}
+{% load icons %}
+<div>
+  {% if show_video_inline %}
+    {% sensor_response_video_stream sensor_response as video_stream %}
+    {% sensor_response_event_snapshot_url sensor_response as event_snapshot_url %}
+    {% if video_stream and video_stream.source_url %}
+    <div class="mb-2">
+      <div class="hi-video-clip">
+        {% if video_stream.stream_type|stringformat:"s" == "mp4" %}
+        <video class="img-fluid" data-video-clip controls autoplay muted playsinline
+               src="{{ video_stream.source_url }}" aria-label="{{ alarm.title }}"></video>
+        {% else %}
+        <img class="img-fluid" data-video-clip src="{{ video_stream.source_url }}" alt="{{ alarm.title }}">
+        {% endif %}
+        {% include "console/panes/video_clip_replay_button.html" %}
+      </div>
+    </div>
+    {% elif event_snapshot_url %}
+    <!-- Fallback to image when video stream is not available -->
+    <div class="mb-2">
+      <img class="img-fluid" src="{{ event_snapshot_url }}" alt="{{ alarm.title }}">
+    </div>
+    {% endif %}
+  {% endif %}
+  <div>
+    {% for label, value in sensor_response.detail_attrs.items %}
+    <div class="row">
+      <div class="col-3 text-right">{{ label }}</div>
+      <div class="col-9">{{ value }}</div>
+    </div>
+    {% endfor %}
+    {% if sensor_response.has_event_video_clip %}
+    <div class="row mt-2">
+      <div class="col-12">
+        <small>
+          <a href="{% url 'console_entity_video_sensor_history' entity_id=sensor_response.sensor.entity_state.entity.id sensor_id=sensor_response.sensor.id %}"
+             data-async="true" class="text-muted">
+            {% icon "video" css_class="hi-icon-left" %}Browse Video Timeline
+          </a>
+        </small>
+      </div>
+    </div>
+    {% endif %}
+  </div>  
+</div>

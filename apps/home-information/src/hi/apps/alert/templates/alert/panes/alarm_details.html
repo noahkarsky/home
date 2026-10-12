@@ -1,0 +1,17 @@
+{% load tz %}
+{% timezone USER_TIMEZONE %}
+<div>
+  <div>
+    Alarmed at: {{ alarm.timestamp|localtime }}
+    {{ alarm.sensor_response_list|length }}
+  </div>
+  <div>
+    {% for sensor_response in alarm.sensor_response_list %}
+    {% if alarm.sensor_response_list|length > 1 %}
+    <h6>Source {{ forloop.counter }} Details</h6>
+    {% endif %}
+    {% include "alert/panes/alarm_sensor_response.html" %}
+    {% endfor %}
+  </div>
+</div>
+{% endtimezone %}

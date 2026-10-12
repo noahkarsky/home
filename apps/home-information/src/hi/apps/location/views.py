@@ -1,0 +1,430 @@
+import logging
+from typing import Any
+
+from django.core.exceptions import BadRequest
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.shortcuts import reverse
+from django.views.generic import View
+
+from hi.apps.common.svg_models import SvgViewBox
+from hi.apps.common.utils import is_ajax, str_to_bool
+import hi.apps.common.antinode as antinode
+
+from hi.apps.attribute.view_mixins import AttributeEditViewMixin
+from hi.apps.attribute.edit_response_renderer import AttributeEditResponseRenderer
+from hi.apps.control.one_click_control_service import (
+    OneClickControlService,
+    OneClickError,
+    OneClickNotSupported,
+)
+from hi.apps.entity.models import Entity
+from hi.apps.entity.view_mixins import EntityViewMixin
+from hi.apps.monitor.status_display_manager import StatusDisplayManager
+from hi.enums import ItemType, ViewDataPriority, ViewType
+from hi.exceptions import ForceSynchronousException
+from hi.hi_async_view import HiModalView
+from hi.hi_grid_view import HiGridView
+from hi.views import page_not_found_response
+
+from .enums import LocationViewType
+from .location_attribute_edit_context import LocationAttributeItemEditContext
+from .location_manager import LocationManager
+from .models import Location, LocationView, LocationAttribute
+from hi.apps.location.view_mixins import LocationViewMixin
+
+logger = logging.getLogger(__name__)
+
+
+class LocationViewDefaultView( View ):
+
+    def get(self, request, *args, **kwargs):
+        # Hot path: resolve the default location's view in a single query
+        # (get_default_location_view fetches the view joined with its
+        # location). Only the rare failures do extra work:
+        #
+        #   - Location.DoesNotExist: no location exists, so this view cannot
+        #     render anything. Defer to StartView, the canonical authority
+        #     on provisioning state, to decide where to go. (This also fixes
+        #     the previously uncaught Location.DoesNotExist 500.)
+        #
+        #   - LocationView.DoesNotExist: a location exists but its default
+        #     view is missing. Switch to any other existing view; if none
+        #     exist anywhere, self-heal by creating a default 'All' view.
+        location_view = None
+        try:
+            location_view = LocationManager().get_default_location_view( request = request )
+        except Location.DoesNotExist:
+            redirect_url = reverse( 'start' )
+        except LocationView.DoesNotExist:
+            location_view = LocationView.objects.order_by(
+                'location__order_id', 'order_id',
+            ).first()
+            if location_view is None:
+                location = LocationManager().get_default_location( request = request )
+                location_view = LocationManager().get_or_create_default_location_view( location )
+
+        if location_view is not None:
+            request.view_parameters.view_type = ViewType.LOCATION_VIEW
+            request.view_parameters.update_location_view( location_view )
+            request.view_parameters.to_session( request )
+            redirect_url = reverse(
+                'location_view',
+                kwargs = { 'location_view_id': location_view.id }
+            )
+
+        query_string = request.META.get( 'QUERY_STRING', '' )
+        if query_string:
+            redirect_url = redirect_url + '?' + query_string
+        return HttpResponseRedirect( redirect_url )
+
+    
+class LocationViewView( HiGridView, LocationViewMixin ):
+
+    def get_main_template_name( self ) -> str:
+        return self.LOCATION_VIEW_TEMPLATE_NAME
+
+    def get_main_template_context( self, request, *args, **kwargs ):
+        location_view = self.get_location_view( request, *args, **kwargs )
+
+        if self.should_force_sync_request(
+                request = request,
+                next_view_type = ViewType.LOCATION_VIEW,
+                next_id = location_view.id ):
+            raise ForceSynchronousException()
+        
+        request.view_parameters.view_type = ViewType.LOCATION_VIEW
+        request.view_parameters.update_location_view( location_view )
+        request.view_parameters.to_session( request )
+
+        location_view_data = LocationManager().get_location_view_data(
+            location_view = location_view,
+            include_status_display_data = bool( not request.view_parameters.is_editing ),
+        )
+
+        svg_view_box_override, svg_rotate_override = self._get_geometry_override( request )
+
+        return {
+            'is_async_request': is_ajax( request ),
+            'location_view': location_view,
+            'location_view_data': location_view_data,
+            # Optional pan/zoom override carried by operations that preserve
+            # the user's current view (e.g. EntityAddView). Absent on normal
+            # navigation, so the template falls back to the stored geometry.
+            'svg_view_box_override': svg_view_box_override,
+            'svg_rotate_override': svg_rotate_override,
+        }
+
+    def _get_geometry_override( self, request ):
+        """Parse and validate an optional SVG geometry override from the
+        query string. Returns (SvgViewBox|None, rotate_str|None). The
+        rotate override is only honored alongside a valid viewbox, since
+        the two together represent one explored geometry."""
+        svg_view_box_str = request.GET.get( 'svg_view_box' )
+        if not svg_view_box_str:
+            return ( None, None )
+        try:
+            svg_view_box_override = SvgViewBox.from_attribute_value( svg_view_box_str )
+        except ( ValueError, TypeError ):
+            return ( None, None )
+
+        svg_rotate_override = request.GET.get( 'svg_rotate' )
+        try:
+            float( svg_rotate_override )
+        except ( ValueError, TypeError ):
+            svg_rotate_override = None
+
+        return ( svg_view_box_override, svg_rotate_override )
+
+    
+class LocationSwitchView( View, LocationViewMixin ):
+
+    def get(self, request, *args, **kwargs):
+        location = self.get_location( request, *args, **kwargs )
+
+        # Invariant: every Location has at least one LocationView. If this
+        # one was left view-less (legacy data / out-of-band deletes), mint
+        # a default 'All' view rather than dead-ending on a BadRequest.
+        location_view = LocationManager().get_or_create_default_location_view( location )
+
+        request.view_parameters.view_type = ViewType.LOCATION_VIEW
+        request.view_parameters.update_location_view( location_view = location_view )
+        request.view_parameters.to_session( request )
+
+        redirect_url = reverse(
+            'location_view',
+            kwargs = { 'location_view_id': location_view.id }
+        )
+        return HttpResponseRedirect( redirect_url )
+
+
+class LocationItemStatusView( View, LocationViewMixin, EntityViewMixin ):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            ( item_type, item_id ) = ItemType.parse_from_dict( kwargs )
+        except ValueError:
+            raise BadRequest( 'Bad item id.' )
+        
+        if item_type == ItemType.ENTITY:
+            entity = self.get_entity( request, entity_id = item_id )
+            return self._handle_entity( request = request, entity = entity )
+    
+        elif item_type == ItemType.COLLECTION:
+            url = reverse( 'collection_view', kwargs = { 'collection_id': item_id } )
+            return antinode.redirect_response( url )
+        
+        raise BadRequest( f'Unknown item type "{item_type}".' )
+        
+    def _handle_entity(self, request : HttpRequest, entity : Entity ):
+
+        location_view_id = request.view_parameters.location_view_id
+        location_view = LocationView.objects.get( id = location_view_id )
+
+        # ``long_press`` signals that the gesture-based escape hatch was
+        # used. It is the universal route back to the status modal: in
+        # AUTOMATION a tap fires one-click control, and in INFORMATION a
+        # tap opens the entity edit modal, so the long-press is the only
+        # way operators have to reach status / history / edit in those
+        # views. The JS doesn't dictate which view to surface -- it just
+        # reports the gesture -- and the server picks the route.
+        # ``str_to_bool`` tolerates ``1``/``true``/``yes``/``on``/etc.
+        # and returns False for a missing param.
+        long_press = str_to_bool( request.GET.get( 'long_press' ) )
+
+        # INFORMATION views default an entity tap to the edit (details /
+        # config) modal even when the entity has states, where DEFAULT /
+        # SECURITY would show status.
+        if ( not long_press
+             and location_view.location_view_type == LocationViewType.INFORMATION ):
+            return self._entity_edit_response(
+                request = request,
+                entity = entity,
+            )
+
+        if ( long_press
+             or location_view.location_view_type not in [ LocationViewType.AUTOMATION ] ):
+            return self._entity_status_response(
+                request = request,
+                entity = entity,
+            )
+        try:
+            logger.debug( f'Trying one-click: {entity}' )
+            controller_outcome = OneClickControlService().execute_one_click_control(
+                entity = entity,
+            )
+            if controller_outcome.has_errors:
+                raise OneClickError(
+                    ' '.join( controller_outcome.error_list )
+                )
+
+            status_display_manager = StatusDisplayManager()
+            override_sensor_value = controller_outcome.new_value
+            status_display_manager.add_entity_state_value_override(
+                entity_state = controller_outcome.controller.entity_state,
+                override_value = override_sensor_value,
+            )
+            return self.get_entity_svg_update_response( entity = entity )
+
+        except OneClickNotSupported:
+            return self._entity_status_response(
+                request = request,
+                entity = entity,
+            )
+            
+        except OneClickError as e:
+            # Fall back to status modal when one-click control is not supported
+            logger.warning( f'One-click control failed: {e}' )
+            return antinode.modal_from_template(
+                request = request,
+                template_name = 'modals/internal_error.html',
+                context = {
+                    'modal_title': entity.name,
+                    'error_message': str(e),
+                },
+                status = 500,
+            )
+
+    def _entity_status_response( self, request : HttpRequest, entity : Entity ):
+        url = reverse( 'entity_status', kwargs = { 'entity_id': entity.id } )
+        return HttpResponseRedirect( url )
+
+    def _entity_edit_response( self, request : HttpRequest, entity : Entity ):
+        url = reverse( 'entity_edit', kwargs = { 'entity_id': entity.id } )
+        return HttpResponseRedirect( url )
+            
+        
+class LocationEditView( HiModalView, LocationViewMixin, AttributeEditViewMixin ):
+    """
+    This view uses a dual response pattern:
+    - get(): Returns full modal using standard modal_response()
+    - post(): Returns antinode fragments for async DOM updates
+    
+    Business logic is delegated to specialized handler classes following
+    the "keep views simple" design philosophy.
+    """
+    
+    def get_template_name(self) -> str:
+        return 'location/modals/location_edit.html'
+    
+    def get( self, request,*args, **kwargs ):
+        priority_override = kwargs.pop( 'data_priority', None ) \
+            or request.GET.get( 'data_priority' )
+        location = self.get_location(request, *args, **kwargs)
+        attr_item_context = LocationAttributeItemEditContext(
+            location = location,
+            extra_template_context = self._build_extra_template_context(
+                location,
+                priority_override = priority_override,
+            ),
+        )
+        template_context = self.create_initial_template_context(
+            attr_item_context= attr_item_context,
+        )
+        return self.modal_response( request, template_context )
+
+    def _build_extra_template_context( self, location, priority_override = None ):
+        external_references = location.external_references.all()
+        data_priority = self._resolve_data_priority(
+            location = location,
+            external_references = external_references,
+            priority_override = priority_override,
+        )
+        return {
+            'external_references': external_references,
+            'data_priority': data_priority,
+        }
+
+    @staticmethod
+    def _resolve_data_priority( location, external_references,
+                                priority_override = None ) -> ViewDataPriority:
+        """Precedence: caller override (e.g., post-picker landing on
+        Linked Content), then INTERNAL > REFERENCE. Locations have no
+        EXTERNAL view-data category. An invalid override name
+        silently falls through to the data-derived computation."""
+        if priority_override:
+            override_value = ViewDataPriority.from_name_safe( priority_override )
+            if override_value is not None:
+                return override_value
+        from hi.apps.attribute.enums import AttributeValueType
+        from hi.apps.location.models import LocationAttribute
+        file_type = str( AttributeValueType.FILE )
+        has_files = location.attributes.filter(
+            value_type_str = file_type,
+        ).exists()
+        has_regulars = location.attributes.exclude(
+            value_type_str = file_type,
+        ).exists()
+        has_deleted = (
+            LocationAttribute.deleted_objects.filter( location = location ).exists()
+            if getattr( LocationAttribute, 'supports_soft_delete', False )
+            else False
+        )
+        has_internal = has_files or has_regulars or has_deleted
+        if has_internal:
+            return ViewDataPriority.INTERNAL
+        if external_references:
+            return ViewDataPriority.REFERENCE
+        return ViewDataPriority.default()
+    
+    def post( self, request,*args, **kwargs ):
+        location = self.get_location(request, *args, **kwargs)
+        attr_item_context = LocationAttributeItemEditContext(
+            location = location,
+            extra_template_context = self._build_extra_template_context( location ),
+        )
+        return self.post_attribute_form(
+            request = request,
+            attr_item_context = attr_item_context,
+        )
+
+
+class LocationAttributeUploadView( View, LocationViewMixin, AttributeEditViewMixin ):
+
+    def post( self, request,*args, **kwargs ):
+        location = self.get_location( request, *args, **kwargs )
+        attr_item_context = LocationAttributeItemEditContext( location = location )
+        return self.post_upload(
+            request = request,
+            attr_item_context = attr_item_context,
+        )
+
+
+class LocationAttributeHistoryInlineView( View, AttributeEditViewMixin ):
+    """View for displaying LocationAttribute history inline within the edit modal."""
+
+    def get( self,
+             request       : HttpRequest,
+             location_id   : int,
+             attribute_id  : int,
+             *args         : Any,
+             **kwargs      : Any          ) -> HttpResponse:
+        # Validate that the attribute belongs to this location for security
+        try:
+            attribute = LocationAttribute.objects.select_related('location').get(
+                pk = attribute_id, location_id = location_id
+            )
+        except LocationAttribute.DoesNotExist:
+            return page_not_found_response(request, "Attribute not found.")
+
+        attr_item_context = LocationAttributeItemEditContext( location = attribute.location )
+
+        return self.get_history(
+            request = request,
+            attribute = attribute,
+            attr_item_context = attr_item_context,
+        )
+
+    
+class LocationAttributeRestoreInlineView( View, AttributeEditViewMixin ):
+    """View for restoring LocationAttribute values from history within the edit modal."""
+    
+    def get( self,
+             request       : HttpRequest,
+             location_id   : int,
+             attribute_id  : int,
+             history_id    : int,
+             *args         : Any,
+             **kwargs      : Any          ) -> HttpResponse:
+        """ Need to do restore in a GET since nested in main form and cannot have a form in a form """
+        try:
+            attribute = LocationAttribute.objects.select_related('location').get(
+                pk = attribute_id, location_id = location_id
+            )
+        except LocationAttribute.DoesNotExist:
+            return page_not_found_response(request, "Attribute not found.")
+
+        attr_item_context = LocationAttributeItemEditContext( location = attribute.location )
+
+        return self.post_restore(
+            request = request,
+            attribute = attribute,
+            history_id = history_id,
+            attr_item_context = attr_item_context,
+        )
+
+
+class LocationAttributeRestoreDeletedInlineView( View ):
+    """View for restoring soft-deleted LocationAttributes."""
+
+    def get( self,
+             request       : HttpRequest,
+             location_id   : int,
+             attribute_id  : int,
+             *args         : Any,
+             **kwargs      : Any          ) -> HttpResponse:
+        try:
+            attribute = LocationAttribute.deleted_objects.select_related('location').get(
+                pk = attribute_id,
+                location_id = location_id,
+            )
+        except LocationAttribute.DoesNotExist:
+            return page_not_found_response(request, "Deleted attribute not found.")
+
+        attribute.restore_from_deleted()
+        attr_item_context = LocationAttributeItemEditContext( location = attribute.location )
+        renderer = AttributeEditResponseRenderer()
+        return renderer.render_form_success_response(
+            attr_item_context = attr_item_context,
+            request = request,
+            message = 'Attribute restored',
+        )

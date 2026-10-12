@@ -1,0 +1,6 @@
+{% extends "pages/tabbed.html" %}
+
+{% block tab_body %}
+{# Each source's tab builds its own one-row header (see panes/source_header.html). #}
+{% include source_data.tab_template %}
+{% endblock %}

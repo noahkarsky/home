@@ -1,0 +1,205 @@
+{% extends "modals/action_done.html" %}
+{% load humanize %}
+{% load tz %}
+{% load video_tags %}
+{% load icons %}
+
+{% block modal_dialog_class %}hi-modal-dialog-600 hi-video-compact{% endblock %}
+{% block header_class %}bg-secondary{% endblock %}
+
+{% block title_text %}
+{{ alert.title }}
+{% endblock %}
+
+{% block body %}
+{% timezone USER_TIMEZONE %}
+
+<!-- Alert Summary Header -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card border-0 bg-light">
+      <div class="card-body py-2">
+        <div class="row">
+          <div class="col-6">
+            <small class="text-muted">Alert Level</small><br>
+            <span class="badge badge-{% if alert.alarm_level.priority <= 2 %}danger{% elif alert.alarm_level.priority <= 4 %}warning{% else %}secondary{% endif %}">
+              {{ alert.alarm_level.label }}
+            </span>
+          </div>
+          <div class="col-6">
+            <small class="text-muted">Alert Source</small><br>
+            <strong>{{ alert.alarm_source.label }}</strong>
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-6">
+            <small class="text-muted">Alert Type</small><br>
+            <strong>{{ alert.alarm_type }}</strong>
+          </div>
+          <div class="col-6">
+            <small class="text-muted">Started</small><br>
+            <strong>{{ alert.start_datetime|localtime|naturaltime }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Visual Content (Smart Rendering) -->
+{% if video_source_count == 1 and alert_visual_content and alert_visual_content.sensor_response %}
+<!-- Show single video at alert level to avoid duplication -->
+{% sensor_response_video_stream alert_visual_content.sensor_response as video_stream %}
+{% sensor_response_event_snapshot_url alert_visual_content.sensor_response as event_snapshot_url %}
+{% if video_stream and video_stream.source_url %}
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h6 class="mb-0">
+          {% icon "camera" css_class="hi-icon-left" %}Video
+        </h6>
+      </div>
+      <div class="card-body p-2">
+        <div class="hi-video-clip">
+          {% if video_stream.stream_type|stringformat:"s" == "mp4" %}
+          <video class="img-fluid" data-video-clip controls autoplay muted playsinline
+                 src="{{ video_stream.source_url }}" aria-label="{{ alert_visual_content.alarm.title }}"></video>
+          {% else %}
+          <img class="img-fluid" data-video-clip src="{{ video_stream.source_url }}" alt="{{ alert_visual_content.alarm.title }}">
+          {% endif %}
+          {% include "console/panes/video_clip_replay_button.html" %}
+        </div>
+        {% if not alert_visual_content.is_from_latest %}
+        <small class="text-muted d-block mt-1">From: {{ alert_visual_content.alarm.timestamp|localtime|date:"M j, Y H:i" }}</small>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% elif event_snapshot_url %}
+<!-- Fallback to snapshot image when video stream is not available -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h6 class="mb-0">
+          {% icon "camera" css_class="hi-icon-left" %}Image
+        </h6>
+      </div>
+      <div class="card-body p-2">
+        <img class="img-fluid" src="{{ event_snapshot_url }}" alt="{{ alert_visual_content.alarm.title }}">
+        {% if not alert_visual_content.is_from_latest %}
+        <small class="text-muted d-block mt-1">From: {{ alert_visual_content.alarm.timestamp|localtime|date:"M j, Y H:i" }}</small>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% elif video_source_count >= 4 %}
+<!-- Show collapsible video list for many videos -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h6 class="mb-0">
+          <a class="text-white text-decoration-none" data-toggle="collapse" href="#videoSources" 
+             role="button" aria-expanded="false" aria-controls="videoSources">
+            {% icon "camera" css_class="hi-icon-left" %}Video Sources ({{ video_source_count }})
+            {% icon "play" css_class="hi-icon-right" %}
+          </a>
+        </h6>
+      </div>
+      <div class="collapse" id="videoSources">
+        <div class="card-body">
+          <div class="row">
+            {% for video_source in all_video_sources %}
+            <div class="col-md-6 mb-3">
+              {% sensor_response_video_stream video_source.sensor_response as video_stream %}
+              {% if video_stream and video_stream.source_url %}
+              <div class="card">
+                <div class="card-header py-1">
+                  <small class="text-muted">Source {{ video_source.index }} - {{ video_source.alarm.timestamp|localtime|date:"M j H:i" }}</small>
+                </div>
+                <div class="card-body p-2">
+                  <div class="hi-video-clip">
+                    {% if video_stream.stream_type|stringformat:"s" == "mp4" %}
+                    <video class="img-fluid" data-video-clip controls muted playsinline
+                           src="{{ video_stream.source_url }}" aria-label="Source {{ video_source.index }}"></video>
+                    {% else %}
+                    <img class="img-fluid" data-video-clip src="{{ video_stream.source_url }}" alt="Source {{ video_source.index }}">
+                    {% endif %}
+                    {% include "console/panes/video_clip_replay_button.html" %}
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+<!-- For 2-3 video sources, they will be shown inline at sensor response level -->
+
+<!-- Recent Alarm Details -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">
+          Recent Activity
+          {% if alert.alarm_count > 1 %}
+            <span class="badge badge-secondary ml-2">{{ alert.alarm_count }} alarm{{ alert.alarm_count|pluralize }}</span>
+          {% endif %}
+        </h6>
+      </div>
+      <div class="card-body">
+        {% with alarm=alert.alarm_list.0 %}
+          <div class="mb-2">
+            <small class="text-muted">{{ alarm.timestamp|localtime|date:"M j, Y H:i" }}</small>
+          </div>
+          {% include "alert/panes/alarm_details.html" %}
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Additional Alarms (Collapsible) -->
+{% if alert.alarm_count > 1 %}
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">
+          <a class="text-decoration-none" data-toggle="collapse" href="#additionalAlarms" 
+             role="button" aria-expanded="false" aria-controls="additionalAlarms">
+            {% icon "play" css_class="hi-icon-left" %}Previous Alarms ({{ alert.alarm_count|add:"-1" }})
+          </a>
+        </h6>
+      </div>
+      <div class="collapse" id="additionalAlarms">
+        <div class="card-body">
+          {% for alarm in alert.alarm_list %}
+            {% if not forloop.first %}
+              <div class="border-bottom mb-3 pb-3">
+                <h6>Alarm {{ forloop.counter }}: {{ alarm.title }}</h6>
+                <small class="text-muted">{{ alarm.timestamp|localtime|date:"M j, Y H:i" }}</small>
+                {% include "alert/panes/alarm_details.html" %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endtimezone %}
+{% endblock %}

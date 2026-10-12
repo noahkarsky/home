@@ -1,0 +1,69 @@
+from datetime import datetime
+import threading
+from typing import Dict, List
+
+from hi.apps.common.singleton import Singleton
+
+from .sim_models import ZmSimEvent, ZmSimMonitor
+from .zm_event_history import ZmSimEventHistory
+
+
+class ZmSimEventManager( Singleton ):
+    
+    def __init_singleton__( self ):
+        self._zm_sim_events_map : Dict[ int, ZmSimEventHistory ] = dict()
+        self._data_lock = threading.Lock()
+        # ZM's wire event_id space is a single non-decreasing counter
+        # across all monitors. Centralizing allocation here keeps ids
+        # unique under simultaneous events on different monitors.
+        self._next_event_id = 0
+        return
+
+    def _allocate_event_id( self ) -> int:
+        self._next_event_id += 1
+        return self._next_event_id
+
+    def add_motion_value( self,
+                          zm_sim_monitor : ZmSimMonitor,
+                          motion_value   : bool ):
+        with self._data_lock:
+            monitor_id = zm_sim_monitor.monitor_id
+            if monitor_id not in self._zm_sim_events_map:
+                self._zm_sim_events_map[monitor_id] = ZmSimEventHistory(
+                    zm_sim_monitor = zm_sim_monitor,
+                    event_id_allocator = self._allocate_event_id,
+                )
+            self._zm_sim_events_map[monitor_id].add_motion_value( motion_value = motion_value )
+        return
+
+    def get_events_by_start_datetime( self, start_datetime : datetime ) -> List[ ZmSimEvent ]:
+        zm_sim_event_list = list()
+        for zm_event_history in self._zm_sim_events_map.values():
+            event_list = zm_event_history.get_events_by_start_datetime( start_datetime = start_datetime )
+            zm_sim_event_list.extend( event_list )
+            continue
+        self._update_zm_sim_events( zm_sim_event_list = zm_sim_event_list )
+        return zm_sim_event_list
+
+    def find_event_by_id( self, event_id : int ) -> ZmSimEvent:
+        """Walk every monitor's history and return the first event
+        with the given id, or None if no match. Used by the media
+        endpoints (thumbnail / MJPEG playback) to render frames
+        with the right monitor + event metadata baked in. Returns
+        None for unknown ids so the views can fall back to a
+        generic placeholder rather than 404."""
+        with self._data_lock:
+            for zm_event_history in self._zm_sim_events_map.values():
+                for zm_sim_event in zm_event_history._zm_sim_events:
+                    if zm_sim_event.event_id == event_id:
+                        return zm_sim_event
+                    continue
+                continue
+        return None
+
+    def _update_zm_sim_events( self, zm_sim_event_list : List[ ZmSimEvent ] ):
+        for zm_sim_event in zm_sim_event_list:
+            if zm_sim_event.is_active:
+                zm_sim_event.update_score_properties()
+            continue
+        return

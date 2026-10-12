@@ -1,0 +1,67 @@
+{% extends "edit/panes/entity_picker.html" %}
+{% load icons %}
+
+{% block entity_groups %}
+{% for entity_view_group in entity_view_group_list %}
+<div class="{{ DIVID.ENTITY_PICKER_GROUP_SECTION_CLASS }}" data-group="{{ entity_view_group.entity_group_type.label|slugify }}">
+  <div class="entity-group-header"
+       data-toggle="collapse"
+       data-target="#group-{{ entity_view_group.entity_group_type.label|slugify }}"
+       aria-expanded="true"
+       aria-controls="group-{{ entity_view_group.entity_group_type.label|slugify }}">
+    <span class="entity-group-title">{{ entity_view_group.entity_group_type.label }}</span>
+    {% icon "chevron-down" css_class="entity-group-toggle" %}
+  </div>
+  <div class="entity-group-items collapse show" id="group-{{ entity_view_group.entity_group_type.label|slugify }}">
+    {% for entity_view_item in entity_view_group.item_list %}
+    {% include "location/edit/panes/location_view_entity_toggle.html" with location_view=location_view entity=entity_view_item.entity exists_in_view=entity_view_item.exists_in_view is_unused=entity_view_item.is_unused %}
+    {% endfor %}
+  </div>
+</div>
+{% empty %}
+{% include "edit/panes/no_entities_message.html" %}
+{% endfor %}
+{% endblock %}
+
+{% block collections_section %}
+{% if collection_view_group.item_list %}
+<div class="{{ DIVID.ENTITY_PICKER_GROUP_SECTION_CLASS }} mt-4" data-group="collections">
+  <div class="entity-group-header"
+       data-toggle="collapse"
+       data-target="#group-collections"
+       aria-expanded="true"
+       aria-controls="group-collections">
+    <div class="flex-grow-1">
+      <span class="entity-group-title d-block">{% icon "collection" size="sm" css_class="hi-icon-left" %}Collections</span>
+      <small class="text-muted-custom d-block">Adds a collection reference</small>
+    </div>
+    {% icon "chevron-down" css_class="entity-group-toggle" %}
+  </div>
+  <div class="entity-group-items collapse show" id="group-collections">
+    {% for collection_view_item in collection_view_group.item_list %}
+    {% include "location/edit/panes/location_view_collection_toggle.html" with location_view=location_view collection=collection_view_item.collection exists_in_view=collection_view_item.exists_in_view %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block delegates_section %}
+{% if delegate_view_item_list %}
+<div class="{{ DIVID.ENTITY_PICKER_GROUP_SECTION_CLASS }}" data-group="paired-items">
+  <div class="entity-group-header"
+       data-toggle="collapse"
+       data-target="#group-paired-items"
+       aria-expanded="false"
+       aria-controls="group-paired-items">
+    <span class="entity-group-title">Paired Items</span>
+    {% icon "chevron-down" css_class="entity-group-toggle" %}
+  </div>
+  <div class="entity-group-items collapse" id="group-paired-items">
+    {% for entity_view_item in delegate_view_item_list %}
+    {% include "location/edit/panes/location_view_entity_toggle.html" with location_view=location_view entity=entity_view_item.entity exists_in_view=entity_view_item.exists_in_view is_unused=entity_view_item.is_unused %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "modals/action_with_cancel.html" %}
+{% load icons %}
+
+{% block header_class %}bg-secondary{% endblock %}
+
+{% block title_text %}
+Delete Space?
+{% endblock %}
+
+{% block body %}
+<p>
+  Please confirm that you want to delete the space:
+  <ul>
+    <span class="h4 text-primary">{{ location.name }}</span>
+  </ul>
+</p>
+<p>
+  This will also delete all views for this space. This action cannot be undone.
+</p>
+{% endblock %}
+
+{% block action_right %}
+<form action="{% url 'location_edit_location_delete' location_id=location.id %}"
+      method="post" class="form"
+      data-async="true" >
+  {% csrf_token %}
+  <button id="hi-delete-location-button" type="submit" class="btn btn-danger"
+          name="action" value="confirm">
+    {% icon "delete" css_class="hi-icon-left" %}DELETE
+  </button>
+</form>
+{% endblock %}
