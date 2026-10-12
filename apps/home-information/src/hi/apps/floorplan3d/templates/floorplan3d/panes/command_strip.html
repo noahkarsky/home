@@ -1,0 +1,71 @@
+<div id="hi-cc-strip" class="hi-cc-strip">
+  <div class="hi-cc-title">
+    <div class="hi-cc-kicker">COMMAND CENTER</div>
+    <div class="hi-cc-name">{{ location_view.location.name }}</div>
+  </div>
+
+  <div class="hi-cc-tile" id="hi-cc-value" role="button" tabindex="0" title="Click to set your home value">
+    <div class="hi-cc-label">Home value</div>
+    <div class="hi-cc-number" data-role="num">Set value</div>
+    <div class="hi-cc-sub" data-role="sub">your estimate</div>
+  </div>
+
+  <div class="hi-cc-tile" id="hi-cc-speed" role="button" tabindex="0" title="Click to re-run the speed test">
+    <div class="hi-cc-label">Internet speed</div>
+    <div class="hi-cc-number" data-role="num">&hellip;</div>
+    <div class="hi-cc-sub" data-role="sub">testing</div>
+  </div>
+
+  <a class="hi-cc-tile" href="{% url 'system_info' %}" data-async="modal">
+    <div class="hi-cc-label">System</div>
+    <div class="hi-cc-number">Status</div>
+    <div class="hi-cc-sub">health &amp; background tasks</div>
+  </a>
+</div>
+<script>
+  (function () {
+    var SPEED_URL = "{% url 'floorplan3d_speed' %}";
+    var KEY = 'hi.cc.homeValue';
+    function store(op, v) {
+      try { return op === 'get' ? localStorage.getItem(KEY) : localStorage.setItem(KEY, v); } catch (e) { return null; }
+    }
+    function money(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+
+    var value = document.getElementById('hi-cc-value');
+    function paintValue() {
+      var n = parseFloat(store('get'));
+      value.querySelector('[data-role=num]').textContent = n > 0 ? money(n) : 'Set value';
+      value.querySelector('[data-role=sub]').textContent = n > 0 ? 'your estimate' : 'tap to enter';
+    }
+    function editValue() {
+      var cur = store('get') || '';
+      var raw = window.prompt('Home value in dollars', cur);
+      if (raw === null) { return; }
+      var n = parseFloat(String(raw).replace(/[^0-9.]/g, ''));
+      store('set', n > 0 ? String(n) : '');
+      paintValue();
+    }
+    value.addEventListener('click', editValue);
+    value.addEventListener('keydown', function (e) { if (e.key === 'Enter') { editValue(); } });
+    paintValue();
+
+    var speed = document.getElementById('hi-cc-speed');
+    var busy = false;
+    function runSpeed() {
+      if (busy) { return; }
+      busy = true;
+      speed.querySelector('[data-role=num]').textContent = '…';
+      speed.querySelector('[data-role=sub]').textContent = 'testing';
+      fetch(SPEED_URL, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+        speed.querySelector('[data-role=num]').textContent = d.ok ? d.mbps + ' Mbps' : 'Offline';
+        speed.querySelector('[data-role=sub]').textContent = d.ok ? d.latency_ms + ' ms latency' : 'tap to retry';
+      }).catch(function () {
+        speed.querySelector('[data-role=num]').textContent = 'Offline';
+        speed.querySelector('[data-role=sub]').textContent = 'tap to retry';
+      }).then(function () { busy = false; });
+    }
+    speed.addEventListener('click', runSpeed);
+    speed.addEventListener('keydown', function (e) { if (e.key === 'Enter') { runSpeed(); } });
+    runSpeed();
+  })();
+</script>

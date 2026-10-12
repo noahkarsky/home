@@ -21,6 +21,10 @@ urlpatterns = [
           views.BackyardAppView.as_view(),
           name = 'floorplan3d_backyard_app' ),
 
+    path( 'speed',
+          views.SpeedTestView.as_view(),
+          name = 'floorplan3d_speed' ),
+
     path( 'apply',
           views.Floorplan3dApplyView.as_view(),
           name = 'floorplan3d_apply' ),

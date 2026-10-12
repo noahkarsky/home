@@ -10,6 +10,8 @@ Floorplan3dApplyView.
 import logging
 import os
 from pathlib import Path
+import time
+import urllib.request
 import xml.etree.ElementTree as ET
 
 from csp.decorators import csp_update
@@ -129,6 +131,47 @@ class BackyardAppView( View ):
             raise Http404( 'The backyard planner was not found.' )
         return HttpResponse( html_path.read_text( encoding = 'utf-8' ),
                              content_type = 'text/html; charset=utf-8' )
+
+
+SPEED_TEST_URL = 'https://speed.cloudflare.com/__down?bytes=8000000'
+SPEED_TEST_TIMEOUT_SECS = 20
+SPEED_TEST_MIN_INTERVAL_SECS = 30
+
+
+class SpeedTestView( View ):
+    """
+    Command-center internet speed tile. Downloads a fixed payload from
+    Cloudflare's speed endpoint on the server (the browser's CSP does not
+    allow third-party connections) and reports Mbps and time to first byte.
+    Results are cached briefly so reloads and rapid clicks don't re-run it.
+    """
+
+    _last_result = None
+    _last_time = 0.0
+
+    def get( self, request, *args, **kwargs ):
+        cls = type( self )
+        if cls._last_result and ( time.monotonic() - cls._last_time ) < SPEED_TEST_MIN_INTERVAL_SECS:
+            return JsonResponse( cls._last_result )
+        try:
+            started = time.monotonic()
+            req = urllib.request.Request( SPEED_TEST_URL, headers = { 'User-Agent': 'home-information' } )
+            with urllib.request.urlopen( req, timeout = SPEED_TEST_TIMEOUT_SECS ) as response:
+                response.read( 1 )
+                first_byte = time.monotonic()
+                total_bytes = 1 + len( response.read() )
+            transfer_secs = max( time.monotonic() - first_byte, 0.001 )
+            result = {
+                'ok': True,
+                'mbps': round( total_bytes * 8 / transfer_secs / 1_000_000, 1 ),
+                'latency_ms': round( ( first_byte - started ) * 1000 ),
+            }
+        except Exception as e:
+            logger.warning( f'Speed test failed: {e}' )
+            return JsonResponse({ 'ok': False, 'error': 'Offline' })
+        cls._last_result = result
+        cls._last_time = time.monotonic()
+        return JsonResponse( result )
 
 
 class Floorplan3dApplyView( View ):

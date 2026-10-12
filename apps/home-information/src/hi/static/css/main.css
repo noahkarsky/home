@@ -2686,3 +2686,45 @@ g[hover] {
     margin-left: 0.5rem;
     padding-left: 0.75rem;
 }
+
+
+/* Top bar: a visible teal band instead of bare white. */
+#hi-top-content:not([hi-edit="True"]) {
+    background: linear-gradient(180deg, #1d8588 0%, var(--primary-color) 100%);
+    border-bottom: 3px solid #0f4c4e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* Command-center strip above the map on the landing view. */
+.hi-cc-strip {
+    height: 5.25rem;
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: #0f2f31;
+    color: #e8f4f4;
+}
+.hi-cc-title { flex: 1 1 auto; align-self: center; min-width: 0; }
+.hi-cc-kicker { font-size: 0.7rem; letter-spacing: 0.18em; color: #7fd1d3; }
+.hi-cc-name { font-size: 1.3rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hi-cc-tile {
+    flex: 0 0 11rem;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid #2a6a6c;
+    border-radius: 6px;
+    background: #164244;
+    color: #e8f4f4;
+    cursor: pointer;
+    text-decoration: none;
+}
+.hi-cc-tile:hover { background: #1c5659; color: #fff; text-decoration: none; }
+.hi-cc-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7fd1d3; }
+.hi-cc-number { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+.hi-cc-sub { font-size: 0.72rem; color: #a9cfd0; }
+.hi-location-view.hi-has-cc-strip {
+    height: calc(100vh - var(--top-buttons-height) - var(--bottom-buttons-height) - 5.25rem);
+}
+.hi-has-cc-strip .hi-location-view-svg {
+    max-height: calc(100vh - var(--top-buttons-height) - var(--bottom-buttons-height) - 5.25rem);
+}

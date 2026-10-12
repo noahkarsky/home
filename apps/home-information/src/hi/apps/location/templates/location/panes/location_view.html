@@ -1,7 +1,8 @@
 {% load static %}
 {% load common_tags %}
 <link rel="stylesheet" href="{% static location_view.svg_style_name.css_static_file_name %}">
-<div id="hi-location-view-main" class="hi-location-view">
+{% if not request.view_parameters.is_editing %}{% include "floorplan3d/panes/command_strip.html" %}{% endif %}
+<div id="hi-location-view-main" class="hi-location-view{% if not request.view_parameters.is_editing %} hi-has-cc-strip{% endif %}">
   <svg id="{{ location_view.html_id }}"
        class="hi-location-view-svg"
        location-view-id="{{  location_view.id }}"
