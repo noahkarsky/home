@@ -288,6 +288,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
       <div class="menu-pop">
         <button class="btn" id="exportPng" data-en="Export image">导出图片</button>
         <button class="btn" id="exportJson" data-en="Export plan JSON">导出方案 JSON</button>
+        <button class="btn" id="exportHi" data-en="Export SVG for Home Information">导出 Home Information SVG</button>
         <button class="btn" id="importJson" data-en="Import plan">导入方案</button>
         <button class="btn danger" id="reset" data-en="Reset to default">重置为默认方案</button>
       </div></details>
@@ -1441,6 +1442,91 @@ function exportPNG(){
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
 }
 
+/* ======================= Home Information SVG export =======================
+ * Builds a background SVG in Home Information's editor format (apps/home-information,
+ * docs/dev/domain/svg-background-system.md): one <g class="hi-bg-element"> per item, with
+ * data-bg-type / data-bg-edit-type / data-bg-layer, so HI themes it and its editor can edit it.
+ * Scale is 1 SVG unit = 10 mm, which matches HI's wall stroke widths (16 ext / 8 int).
+ */
+const HI_S = 0.1, HI_PAD = 150;
+const HI_FIXTURES = {counter:'countertops', island:'countertops', vanity:'countertops',
+  wardrobe:'cabinets', cabinet:'cabinets', shoecab:'cabinets', bookshelf:'shelves'};
+function hiSvg({labels = true, fixtures = true} = {}){
+  const ox = PLAN_BOX[0], oy = PLAN_BOX[1];
+  const W = Math.ceil((PLAN_BOX[2]-ox)*HI_S + 2*HI_PAD), H = Math.ceil((PLAN_BOX[3]-oy)*HI_S + 2*HI_PAD);
+  const n = v => +v.toFixed(2);
+  const X = x => n((x-ox)*HI_S + HI_PAD), Y = y => n((y-oy)*HI_S + HI_PAD);
+  // HI renders the stored fragment as a Django template, so braces in user text must not survive
+  const txt = s => esc(s).replace(/[{}%]/g, c => `&#${c.charCodeAt(0)};`);
+  let k = 0;
+  const el = (type, edit, layer, inner, attrs = '') =>
+    `<g id="bg-${(0xf3d00000 + k++).toString(16)}" class="hi-bg-element" data-bg-type="${type}" data-bg-edit-type="${edit}" data-bg-layer="${layer}"${attrs}>${inner}</g>`;
+  const poly = pts => ' M ' + pts.map(([x,y]) => `${X(x)},${Y(y)}`).join(' L ') + ' Z';
+  const out = [];
+
+  // Floors: one editable region per room; wet rooms get HI's tile fill
+  ROOMS.forEach(r => {
+    const tiled = ['antislip','tile600','tile800','marble','terrazzo'].includes(state.rooms[r.id].mat);
+    const cls = tiled ? 'tiles' : 'interior-floors';
+    out.push([tiled ? 140 : 130, el(cls, 'closed', tiled ? 140 : 130, `<path class="${cls}" d="${poly(r.poly)}" />`)]);
+  });
+
+  // Fixed furniture (counters, cabinets, shelving) as closed shapes
+  if (fixtures) state.furniture.forEach(f => {
+    const cls = HI_FIXTURES[f.type]; if (!cls) return;
+    const a = f.rot*Math.PI/180, c = Math.cos(a), s = Math.sin(a);
+    const pts = [[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v]) => { const dx = u*f.w/2, dy = v*f.d/2; return [f.cx + dx*c - dy*s, f.cy + dx*s + dy*c]; });
+    const layer = {countertops:150, shelves:160, cabinets:170}[cls];
+    out.push([layer, el(cls, 'closed', layer, `<path class="${cls}" d="${poly(pts)}" />`)]);
+  });
+
+  // Walls: thin rects become centre-line strokes; chunky blocks (chases, columns) become dead space
+  const ext = [], int = [];
+  WALLS.forEach(([x0,y0,x1,y1,t], i) => {
+    if (state.demolished.includes('w'+i)) return;
+    const w = x1-x0, h = y1-y0;
+    if (Math.min(w,h) > 250) return out.push([135, el('dead-space', 'closed', 135, `<path class="dead-space" d="${poly(R(x0,y0,x1,y1))}" />`)]);
+    const seg = w >= h ? `M ${X(x0)},${Y((y0+y1)/2)} L ${X(x1)},${Y((y0+y1)/2)}` : `M ${X((x0+x1)/2)},${Y(y0)} L ${X((x0+x1)/2)},${Y(y1)}`;
+    (t === 'e' ? ext : int).push(seg);
+  });
+  const wall = (type, cls, layer, segs) => segs.length && out.push([layer, el(type, 'open', layer,
+    `<path class="${cls}" d=" ${segs.join(' ')}" /><path d=" ${segs.join(' ')}" class="hi-bg-hit-area" />`)]);
+  wall('interior-walls', 'interior-wall-stroke', 210, int);
+  wall('exterior-walls', 'exterior-wall-stroke', 220, ext);
+
+  // Icons use HI's transform form: scale(sx sy) translate(tx, ty) rotate(r, 0, 0), applied right to left.
+  // A negative sx is how HI's editor mirrors an icon, so translate is divided by the signed scale.
+  const icon = (type, layer, inner, w, h, [px,py], [dx,dy], s, mirror = false) => {
+    // Translate is in pre-scale units, so the scale is rounded first and the translate derived from that
+    s = +s.toFixed(4);
+    const sx = mirror ? -s : s, r = Math.round(Math.atan2(dy, mirror ? -dx : dx)*180/Math.PI);
+    const tf = `scale(${sx} ${s}) translate(${n(X(px)/sx)}, ${n(Y(py)/s)}) rotate(${r}, 0, 0)`;
+    out.push([layer, el(type, 'icon', layer, `${inner}<rect x="0" y="0" width="${w}" height="${h}" fill="transparent" class="hi-bg-hit-area" />`, ` transform="${tf}"`)]);
+  };
+  // HI door: hinge at the origin, closed leaf along +x, swinging toward +y, 100 units long
+  DOORS.forEach(d => icon('door-standard', 240,
+    '<path class="doors" d="M 0,0 L 70.71,70.71" /><path class="door-arcs" d="M 100,0 C 100,26.52 89.46,51.96 70.71,70.71" />',
+    100, 70.71, d.h, d.c, d.len*HI_S/100, d.o[0] !== -d.c[1] || d.o[1] !== d.c[0]));
+  // HI window / slider: a 105x9 (or 120x9) bar along +x from the origin; centre it in the wall
+  const bar = (type, layer, inner, len, [x0,y0,x1,y1]) => {
+    const horiz = x1-x0 >= y1-y0, s = (horiz ? x1-x0 : y1-y0)*HI_S/len, half = 4.5*s/HI_S;
+    icon(type, layer, inner, len, 9, horiz ? [x0, (y0+y1)/2 - half] : [(x0+x1)/2 + half, y0], horiz ? [1,0] : [0,1], s);
+  };
+  WINS.forEach(w => bar('window-standard', 250, '<path class="windows" d="M 0,0 L 105,0 L 105,9 L 0,9 Z" />', 105, w));
+  SLIDES.forEach(d => bar('sliding-door', 260,
+    '<path class="sliding-doors" d="M 0,0 L 120,0 L 120,9 L 0,9 Z" /><line class="sliding-doors-center" x1="60" y1="-2" x2="60" y2="11" />', 120, d.rect));
+
+  const name = txt(tr('我们的家', 'Our House'));
+  let svgOut = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">\n<g data-hi-editor="1" data-hi-name="${name}">\n`
+    + out.sort((a,b) => a[0]-b[0]).map(o => o[1]).join('\n') + '\n</g>\n';
+  // Room labels sit outside the editor group: HI shows them, but its background editor only keeps the group
+  if (labels) svgOut += '<g class="fp3d-room-labels" pointer-events="none" font-family="sans-serif" text-anchor="middle">\n'
+    + ROOMS.filter(r => r.at).map(r => `<text x="${X(r.at[0])}" y="${Y(r.at[1])}" font-size="24" font-weight="600" fill="#555555">${txt(nm(state.rooms[r.id].name))}</text>`).join('\n')
+    + '\n</g>\n';
+  return svgOut + '</svg>\n';
+}
+window.FloorplanExport = {hiSvg};
+
 /* ======================= 杂项 ======================= */
 let toastT;
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800); }
@@ -1508,6 +1594,7 @@ matchMedia('(max-width:1100px)').addEventListener('change', () => drawer(null));
 drawer(null);                                  // 恢复上次的面板收起状态
 $('#exportPng').onclick = exportPNG;
 $('#exportJson').onclick = () => download(tr('户型装修方案', 'floor-plan-design') + '.json', new Blob([JSON.stringify(state, null, 2)], {type:'application/json'}));
+$('#exportHi').onclick = () => download(tr('户型装修方案', 'floor-plan-design') + '-home-information.svg', new Blob([hiSvg()], {type:'image/svg+xml'}));
 $('#importJson').onclick = () => $('#fileIn').click();
 $('#fileIn').onchange = e => {
   const file = e.target.files[0]; if (!file) return;
