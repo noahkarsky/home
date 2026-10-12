@@ -1,15 +1,5 @@
 <div class="hi-administration-content">
-  <ul id="hi-config-tab" class="nav nav-tabs" role="tablist">
-    {% for config_page_type in request.config_page_type_list %}
-    <li class="nav-item">
-      <a id="hi-config-tab-{{ config_page_type }}" role="tab"
-         class="nav-link {% if request.current_config_page_type == config_page_type %}active{% endif %}"
-         href="{% url config_page_type.url_name %}" 
-         data-async="true">{{ config_page_type.label }}</a>
-    </li>
-    {% endfor %}
-  </ul>
-  
+  {# The page tabs (Settings, Rules, ...) live in the top bar: see panes/top_buttons.html #}
   <div class="tab-content" id="hi-config-tab-content">
     {% block config_content %}
     {% endblock %}

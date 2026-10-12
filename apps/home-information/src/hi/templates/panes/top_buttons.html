@@ -11,7 +11,34 @@
       </a>
     </div>
     {% endif %}
+    {% if request.view_parameters.view_type.is_configuration and request.config_page_type_list %}
+    <div id="hi-config-tab" class="d-flex justify-content-start hi-button-bar-flex" role="tablist">
+      {% for config_page_type in request.config_page_type_list %}
+      <div class="mx-1">
+        <a id="hi-config-tab-{{ config_page_type }}" role="tab"
+           class="btn {% if request.current_config_page_type == config_page_type %}btn-secondary{% else %}btn-primary{% endif %} btn-control"
+           href="{% url config_page_type.url_name %}"
+           data-async="true">{{ config_page_type.label }}</a>
+      </div>
+      {% endfor %}
+    </div>
+    <script>
+      /* Tab clicks only swap the main pane, so move the highlight here. */
+      if (!window.hiConfigTabsWired) {
+        window.hiConfigTabsWired = true;
+        document.addEventListener('click', function (ev) {
+          var tab = ev.target.closest('#hi-config-tab a');
+          if (!tab) { return; }
+          document.querySelectorAll('#hi-config-tab a').forEach(function (el) {
+            el.classList.remove('btn-secondary'); el.classList.add('btn-primary');
+          });
+          tab.classList.remove('btn-primary'); tab.classList.add('btn-secondary');
+        });
+      }
+    </script>
+    {% else %}
     {% include "location/panes/location_view_buttons.html" %}
+    {% endif %}
     <div class="hi-button-bar-center">
       <a href="{% url 'home' %}" title="Back to the map">
         <img src="{% static 'img/hi-logo-149x64.png' %}" alt="Home Information Logo">
