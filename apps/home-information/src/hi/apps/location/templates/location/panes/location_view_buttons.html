@@ -1,5 +1,7 @@
 {% load icons %}
+{# A lone view button ("All") offers no choice, and it would sit directly above the Configure tabs. Show the bar only when there is something to choose, or while editing views. #}
 <div class="d-flex justify-content-start draggable-container hi-button-bar-flex">
+  {% if location_view_list|length > 1 or request.view_parameters.is_editing %}
   {% for location_view in location_view_list %}
   <div id="{{ location_view.html_id }}-button"
        class="{% if request.view_parameters.is_editing %}draggable{% endif %} mx-1"
@@ -12,4 +14,5 @@
     </a>
   </div>
   {% endfor %}
+  {% endif %}
 </div>

@@ -13,7 +13,9 @@
     {% endif %}
     {% include "location/panes/location_view_buttons.html" %}
     <div class="hi-button-bar-center">
-      <img src="{% static 'img/hi-logo-149x64.png' %}" alt="Home Information Logo">
+      <a href="{% url 'home' %}" title="Back to the map">
+        <img src="{% static 'img/hi-logo-149x64.png' %}" alt="Home Information Logo">
+      </a>
     </div>
     <div class="d-flex justify-content-end hi-button-bar-fixed">
       {% if request.view_parameters.location %}
