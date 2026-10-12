@@ -23,6 +23,7 @@ class ConfigPageType(LabeledEnum):
     INTEGRATIONS_IMPORT     = ('Data Import'     , ''   , 'integrations_import_home' )
     SYSTEM_INFO             = ('System Info'     , ''   , 'system_info' )
     FLOORPLAN_3D            = ('3D Floor Plan'   , ''   , 'floorplan3d_home' )
+    BACKYARD                = ('Backyard'        , ''   , 'floorplan3d_backyard' )
 
     @classmethod
     def default(cls):

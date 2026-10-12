@@ -1,0 +1,27 @@
+{% extends "config/pages/config_base.html" %}
+{% load icons %}
+
+{% block config_content %}
+<div class="container-fluid">
+  {% if backyard_available %}
+  <div class="d-flex flex-wrap align-items-center my-2">
+    <span class="small text-muted mr-3">
+      Plan plantings and layouts for the yard, with real sun and shade for this lot.
+      Layouts are saved in this browser.
+    </span>
+    <a href="{% url 'floorplan3d_backyard_app' %}" target="_blank" rel="noopener"
+       class="btn btn-tertiary btn-sm">
+      {% icon "view" css_class="hi-icon-left" %}OPEN FULL SCREEN
+    </a>
+  </div>
+  <iframe id="hi-backyard-frame" src="{% url 'floorplan3d_backyard_app' %}" title="Backyard planner"
+          style="width:100%;height:80vh;border:1px solid #ccc;border-radius:4px"></iframe>
+  {% else %}
+  <div class="alert alert-warning my-3">
+    The backyard planner was not found. In the home monorepo it lives at
+    <code>apps/backyard/index.html</code>; set <code>HI_BACKYARD_HTML</code> to its path
+    if it is somewhere else.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

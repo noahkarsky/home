@@ -335,7 +335,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
     </div>
     <div class="compass" id="compass" title="True north (from the land survey)">
       <svg viewBox="-16 -16 32 32" aria-hidden="true"><circle r="14.5" fill="none" stroke="currentColor" stroke-opacity=".35"/><g transform="rotate(149)"><polygon points="0,-12 4,5 0,2 -4,5" fill="#b5301e"/></g></svg>
-      <div><b>1902 Eagle Falls Dr</b>Houston TX 77077 · <a href="../backyard/index.html">Backyard planner →</a></div>
+      <div><b>1902 Eagle Falls Dr</b>Houston TX 77077 · <a id="backyardLink" href="../backyard/index.html">Backyard planner →</a></div>
     </div>
     <div class="scalebar" id="scalebar"><span id="sbText">1 m</span><div class="bar" id="sbBar"></div></div>
     <div class="modehint" id="modehint"></div>
@@ -354,6 +354,12 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
 </div>
 <div id="toast"></div>
 
+<script>
+// Opened from a file or a plain web server the relative link works. Inside Home Information the
+// planner is served at /floorplan3d/backyard (a config tab), so point there and leave the iframe.
+(function(){ var a = document.getElementById('backyardLink');
+  if (a && location.pathname.indexOf('/floorplan3d/') === 0) { a.href = '/floorplan3d/backyard'; a.target = '_top'; } })();
+</script>
 <script>
 /* ======================= 多语言（中文 / English，默认中文） ======================= */
 const LANG_KEY = 'huxing-lang';

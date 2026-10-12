@@ -30,6 +30,10 @@ def run_hi(port):
     # Same steps as scripts/hi-dev.sh, in one process and without the reloader.
     os.chdir(HI_SRC)
     sys.path.insert(0, str(HI_SRC))
+    # HI starts its background tasks (weather polling, integration sync) only when RUN_MAIN is
+    # 'true', which Django's reloader normally sets. There is no reloader here, so set it
+    # ourselves; otherwise weather, sunrise/sunset and clouds never load.
+    os.environ.setdefault('RUN_MAIN', 'true')
     import django
     from django.core.management import call_command
     django.setup()

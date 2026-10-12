@@ -13,6 +13,14 @@ urlpatterns = [
           views.Floorplan3dDesignerView.as_view(),
           name = 'floorplan3d_designer' ),
 
+    path( 'backyard',
+          views.BackyardView.as_view(),
+          name = 'floorplan3d_backyard' ),
+
+    path( 'backyard/app',
+          views.BackyardAppView.as_view(),
+          name = 'floorplan3d_backyard_app' ),
+
     path( 'apply',
           views.Floorplan3dApplyView.as_view(),
           name = 'floorplan3d_apply' ),

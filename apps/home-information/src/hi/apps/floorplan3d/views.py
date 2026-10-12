@@ -59,6 +59,20 @@ def get_designer_html_path() -> Path:
     return None
 
 
+def get_backyard_html_path() -> Path:
+    """ Same lookup as the designer: HI_BACKYARD_HTML, the monorepo checkout, then the docker mount. """
+    candidates = [
+        os.environ.get( 'HI_BACKYARD_HTML' ),
+        Path( settings.BASE_DIR ).parent.parent.parent / 'backyard' / 'index.html',
+        '/backyard/index.html',
+    ]
+    for candidate in candidates:
+        if candidate and Path( candidate ).is_file():
+            return Path( candidate )
+        continue
+    return None
+
+
 class Floorplan3dView( ConfigPageView ):
 
     @property
@@ -86,6 +100,33 @@ class Floorplan3dDesignerView( View ):
         html_path = get_designer_html_path()
         if not html_path:
             raise Http404( 'The floorplan-3d designer was not found.' )
+        return HttpResponse( html_path.read_text( encoding = 'utf-8' ),
+                             content_type = 'text/html; charset=utf-8' )
+
+
+class BackyardView( ConfigPageView ):
+    """ The Backyard tab: the backyard planner framed inside the config pages. """
+
+    @property
+    def config_page_type(self) -> ConfigPageType:
+        return ConfigPageType.BACKYARD
+
+    def get_main_template_name( self ) -> str:
+        return 'floorplan3d/panes/backyard.html'
+
+    def get_main_template_context( self, request, *args, **kwargs ):
+        return { 'backyard_available': bool( get_backyard_html_path() ) }
+
+
+@method_decorator( xframe_options_sameorigin, name = 'dispatch' )
+@method_decorator( csp_update({ 'script-src': [ DESIGNER_CDN_URL ] }), name = 'dispatch' )
+class BackyardAppView( View ):
+    """ Serves the backyard planner page itself, framed by the Backyard tab. """
+
+    def get( self, request, *args, **kwargs ):
+        html_path = get_backyard_html_path()
+        if not html_path:
+            raise Http404( 'The backyard planner was not found.' )
         return HttpResponse( html_path.read_text( encoding = 'utf-8' ),
                              content_type = 'text/html; charset=utf-8' )
 
