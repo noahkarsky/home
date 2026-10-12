@@ -28,7 +28,24 @@ apps/home-information/venv/bin/pip install -r apps/home-information/src/hi/requi
 scripts/hi-dev.sh
 ```
 
-Then open http://localhost:8411. Data is kept in `.data/hi/`.
+Then open http://localhost:8411. Data is kept in `.data/hi/`. The env defaults live in [`scripts/hi.env`](scripts/hi.env), and anything already set in the environment wins.
+
+**Home Information (Windows, one click).** Create the venv once with `py -3.11 -m venv apps\home-information\venv`, then install the requirements as above (use `venv\Scripts\pip`). Then add the shortcuts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install-shortcuts.ps1
+```
+
+This puts **Home** on the Desktop. It also adds **Home**, **Home (Edit mode)** and **Stop Home** to the Start Menu, all with the HI icon ([`scripts/home.ico`](scripts/home.ico)). **Home** runs [`scripts/home-launcher.ps1`](scripts/home-launcher.ps1), which works like this:
+
+- If HI already answers on http://127.0.0.1:8411/health, it just opens the window.
+- If it doesn't, the launcher uses a Redis that answers on port 6379, or else starts fakeredis as an in-memory stand-in. It then starts HI with the `hi.env` settings and shows a small *Starting Home…* box until `/health` is up (about 5–10 s).
+- It opens HI as an Edge (or Chrome) `--app` window.
+- Both services run hidden under `pythonw`. Their logs and PID files are in `.data/hi/logs/`. A second click never starts duplicates.
+- **Home (Edit mode)** opens `/edit/start`, which lands on the house in EDIT mode with **ADD NEW ITEM** ready.
+- **Stop Home** (`home-launcher.ps1 -Stop`) shuts down both services. It also stops a `hi-dev.sh` server or fakeredis on those ports, but never a real Redis.
+
+The launcher takes `-Port`, `-RedisPort`, `-DataDir`, `-Venv`, `-Path` and `-NoWindow`. `install-shortcuts.ps1` passes `-DataDir`/`-Venv` through, and `-Uninstall` removes the shortcuts. Re-run it if you move the checkout. fakeredis keeps its data in memory, so HI's cached state (not the database) resets on each start. If you install a real Redis for Windows (e.g. Memurai) on port 6379, the launcher uses it automatically.
 
 **Home Information (Docker).** See the comments in [`docker-compose.yml`](docker-compose.yml). It builds HI from this repo and mounts the designer read-only.
 
