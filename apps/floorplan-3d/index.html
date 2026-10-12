@@ -67,6 +67,13 @@ main{position:relative;overflow:hidden;background:var(--paper)}
 .scalebar{position:absolute;left:14px;bottom:12px;background:rgba(255,253,249,.92);border:1px solid var(--line);
   border-radius:8px;padding:6px 10px;font-size:12px;pointer-events:none}
 .scalebar .bar{height:6px;border:1.5px solid var(--ink);border-top:0;margin-top:3px}
+/* true-north compass + address plaque. Plan-up in this drawing points S31°W (the rear of the house), so north is 149° clockwise from up. */
+.compass{position:absolute;left:14px;bottom:56px;display:flex;align-items:center;gap:8px;background:rgba(255,253,249,.92);border:1px solid var(--line);
+  border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.25;transition:opacity .3s}
+.compass svg{width:30px;height:30px;flex:none}
+.compass b{display:block;font-size:12px}
+.compass a{color:var(--accent,#b5651d);text-decoration:none;font-weight:600}
+main.is3d .compass{opacity:0;pointer-events:none}
 .modehint{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:var(--ink);color:#fff;
   padding:5px 12px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none}
 .modehint.show{opacity:.9}
@@ -326,6 +333,10 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
       <button class="btn primary" id="walkExit" data-en="Exit walk">退出漫游</button>
       <div id="hint3d"></div>
     </div>
+    <div class="compass" id="compass" title="True north (from the land survey)">
+      <svg viewBox="-16 -16 32 32" aria-hidden="true"><circle r="14.5" fill="none" stroke="currentColor" stroke-opacity=".35"/><g transform="rotate(149)"><polygon points="0,-12 4,5 0,2 -4,5" fill="#b5301e"/></g></svg>
+      <div><b>1902 Eagle Falls Dr</b>Houston TX 77077 · <a href="../backyard/index.html">Backyard planner →</a></div>
+    </div>
     <div class="scalebar" id="scalebar"><span id="sbText">1 m</span><div class="bar" id="sbBar"></div></div>
     <div class="modehint" id="modehint"></div>
     <div id="fab"></div>
@@ -461,7 +472,7 @@ const ROOMS = [
   {id:'hall', name:'Hall', poly:R(2790,8440,12260,9450), mat:'wood', at:[7290,8960]},
   {id:'hallw', name:'Hall', poly:R(5490,9560,6610,15000), mat:'wood'},
   {id:'stairhall', name:'Stair Hall', poly:[[6720,9560],[12160,9560],[12160,15000],[11090,15000],[11090,10620],[6720,10620]], mat:'wood', at:[11620,12850]},
-  {id:'office', name:'Office', poly:R(6720,10730,10970,15000), mat:'wood', at:[8850,13770]},
+  {id:'office', name:'Command Center', poly:R(6720,10730,10970,15000), mat:'wood', at:[8850,13770]},
   {id:'living', name:'Living Room', poly:[[4250,15120],[12160,15120],[12160,20000],[10390,20000],[10390,20600],[6070,20600],[6070,20000],[4250,20000]], mat:'wood', at:[6680,16020]},
   {id:'linen2', name:'Linen', poly:R(4250,14170,5380,15000), mat:'wood'},
   {id:'bed4cl', name:'Closet', poly:R(10120,5880,10760,8330), mat:'carpet'},
@@ -520,6 +531,16 @@ let _n = 1;
 const uid = () => 'f' + Date.now().toString(36) + (_n++);
 const F = (type,name,cx,cy,w,d,rot=0,color) => ({id:uid(),type,name,cx,cy,w,d,rot,color:color||typeColor(type)});
 
+// Command Center: the built-in U-shaped desk, open toward the east door (see the room photo).
+// Walls inside the room: x 6720..10970, y 10730..15000. Counter depth 610.
+function commandCenterDesk(){ return [
+  F('counter','Built-in desk (north)',8020,11035,2600,610,0,'#efe8dc'),
+  F('counter','Built-in desk (west)',7025,12865,3050,610,90,'#efe8dc'),
+  F('counter','Built-in desk (south)',8020,14695,2600,610,0,'#efe8dc'),
+  F('officechair','办公椅',7800,12865,620,620,90),
+]; }
+const CC_OLD_DEFAULTS = [['desk',8850,11100],['officechair',8850,11650],['bookshelf',8850,14820]];
+
 function defaultFurniture(){ return [
   F('bed','双人床',2770,10610,1930,2030,0,'#c9d6df'),
   F('nightstand','床头柜',1440,9790,500,420,0),
@@ -563,15 +584,13 @@ function defaultFurniture(){ return [
   F('armchair','单人沙发',6890,18270,850,850,90),
   F('armchair','单人沙发',9550,18270,850,850,270),
   F('plant','绿植',4580,15510,500,500,0),
-  F('desk','长书桌',8850,11100,1800,700,0),
-  F('officechair','办公椅',8850,11650,620,620,180),
-  F('bookshelf','大书架',8850,14820,1600,350,180),
+  ...commandCenterDesk(),
   F('plant','绿植',12560,15450,500,500,0),
 ];}
 
 function defaultState(){
   const rooms = {}; ROOMS.forEach(r => rooms[r.id] = {name:r.name, mat:r.mat});
-  return {furniture:defaultFurniture(), rooms, demolished:[], measures:[]};
+  return {furniture:defaultFurniture(), rooms, demolished:[], measures:[], ccv:1};
 }
 
 const STORE = 'floorplan-home-v1';
@@ -583,6 +602,12 @@ function fixState(s){
   const d = defaultState();
   s.rooms = Object.assign(d.rooms, s.rooms || {});
   s.demolished = s.demolished || []; s.measures = s.measures || [];
+  if (!s.ccv) {   // one-time: Office -> Command Center for plans saved by an older version
+    s.ccv = 1;
+    if (s.rooms.office && s.rooms.office.name === 'Office') s.rooms.office.name = 'Command Center';
+    const untouched = f => CC_OLD_DEFAULTS.some(([t,x,y]) => f.type === t && f.cx === x && f.cy === y);
+    if (s.furniture.some(untouched)) s.furniture = s.furniture.filter(f => !untouched(f)).concat(commandCenterDesk());
+  }
   return s;
 }
 
