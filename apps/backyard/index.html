@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Backyard Planner · 1902 Eagle Falls Dr</title>
+<style>
+:root{
+  --bg:#12171c; --panel:#1a2128; --panel2:#222b33; --line:#2f3a44; --ink:#e8edf1; --dim:#93a1ad;
+  --accent:#7bd389; --warn:#ffb454; --bad:#ff6b6b; --sun:#ffd166;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:#51606c}
+button.on{background:#25402d;border-color:var(--accent)}
+input,select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+input[type=range]{padding:0;accent-color:var(--sun)}
+#app{display:grid;grid-template-rows:auto 1fr;height:100%}
+header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:15px;margin:0;font-weight:650}
+header small{color:var(--dim);display:block;font-weight:400}
+.sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0}
+main{display:grid;grid-template-columns:240px 1fr 300px;min-height:0}
+aside{background:var(--panel);overflow:auto;min-height:0}
+#palette{border-right:1px solid var(--line);padding:8px}
+#side{border-left:1px solid var(--line);padding:10px}
+#palette h3{margin:12px 4px 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;margin:2px 0;padding:5px 7px}
+.chip{width:14px;height:14px;border-radius:4px;flex:none;border:1px solid #0006}
+.item span.s{margin-left:auto;color:var(--dim);font-size:11px;white-space:nowrap}
+#stage{position:relative;min-width:0;min-height:0;background:#0d1216}
+#plan,#three{position:absolute;inset:0;width:100%;height:100%;display:block}
+#plan{touch-action:none;cursor:grab}
+#three{display:none}
+.hud{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:#12171ccc;backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:12px;padding:8px 12px;pointer-events:auto}
+.hud label{display:flex;align-items:center;gap:6px;color:var(--dim)}
+.hud b{color:var(--ink);font-variant-numeric:tabular-nums}
+.layers{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;gap:4px;background:#12171ccc;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.layers label{display:flex;gap:6px;align-items:center;color:var(--dim);cursor:pointer}
+.zoom{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:4px}
+.zoom button{width:34px;height:34px;padding:0}
+#readout{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#12171ccc;border:1px solid var(--line);border-radius:999px;padding:3px 12px;color:var(--dim);font-variant-numeric:tabular-nums;pointer-events:none;white-space:nowrap}
+.legend{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim)}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px}
+#side h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:14px 0 6px}
+#side h2:first-child{margin-top:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+.row label{display:flex;flex-direction:column;gap:2px;color:var(--dim);font-size:12px}
+.row input{width:100%}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.note{color:var(--dim);font-size:13px}
+.flag{border-radius:8px;padding:6px 8px;margin:5px 0;font-size:13px;border:1px solid}
+.flag.warn{background:#3a2d14;border-color:#6b5222;color:#ffd9a0}
+.flag.bad{background:#3b1c1c;border-color:#793030;color:#ffb3b3}
+.flag.ok{background:#17301e;border-color:#2c5b38;color:#bdf0c7}
+.flag.info{background:#1b2a38;border-color:#2e4a63;color:#b9d8f2}
+details{margin:8px 0}
+summary{cursor:pointer;color:var(--ink);font-weight:600}
+ul.n{margin:6px 0 0;padding-left:18px;color:var(--dim);font-size:13px}
+ul.n li{margin:3px 0}
+.empty{color:var(--dim);padding:6px 0}
+@media (max-width:1000px){
+  main{grid-template-columns:1fr;grid-template-rows:minmax(55vh,1fr) auto auto}
+  #palette{order:3;border-right:0;border-top:1px solid var(--line);max-height:40vh}
+  #side{order:2;border-left:0;border-top:1px solid var(--line);max-height:38vh}
+  #stage{order:1}
+}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1>Backyard Planner<small>1902 Eagle Falls Dr · Houston TX 77077 · Lot 12, Block 17</small></h1>
+  <div class="seg" id="viewSeg"><button id="v2d" class="on">Plan</button><button id="v3d">3D</button></div>
+  <select id="scenario" title="Layout"></select>
+  <button id="dupScenario" title="Copy this layout into a new one">Copy layout</button>
+  <span class="sp"></span>
+  <button id="undo">Undo</button>
+  <button id="exportBtn">Export</button>
+  <button id="importBtn">Import</button>
+  <button id="resetBtn">Reset</button>
+  <input id="importFile" type="file" accept="application/json" hidden>
+</header>
+<main>
+  <aside id="palette"><input id="search" placeholder="Search plants &amp; features" style="width:100%"><div id="cat"></div></aside>
+  <section id="stage">
+    <svg id="plan" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="three"></div>
+    <div class="layers" id="layers">
+      <label><input type="checkbox" data-l="shadow" checked> Shadows</label>
+      <label><input type="checkbox" data-l="heat"> Sun-hours map</label>
+      <label><input type="checkbox" data-l="ease" checked> Easements</label>
+      <label><input type="checkbox" data-l="grid" checked> 5 ft grid</label>
+      <label><input type="checkbox" data-l="label" checked> Labels</label>
+    </div>
+    <div id="readout">–</div>
+    <div class="zoom"><button id="zin">+</button><button id="zout">−</button><button id="zfit" title="Fit backyard">⌂</button></div>
+    <div class="hud" id="hud">
+      <label>Date <input type="date" id="date"></label>
+      <span class="seg"><button data-d="2026-12-21">Winter</button><button data-d="2026-03-20">Equinox</button><button data-d="2026-06-21">Summer</button><button data-d="today">Today</button></span>
+      <label>Time <input type="range" id="hour" min="5" max="21" step="0.05" style="width:170px"> <b id="hourTxt"></b></label>
+      <button id="play">Play day</button>
+      <span class="seg" id="camSeg" style="display:none"><button data-v="house">From house</button><button data-v="garage">From garage side</button><button data-v="rear">From rear</button><button data-v="top">Top</button></span>
+      <span id="sunTxt" style="color:var(--dim)"></span>
+      <span class="legend" id="legend" style="display:none"><i style="background:#2a3a66"></i>&lt;2h <i style="background:#2f8f8a"></i>2–4h <i style="background:#e0b84a"></i>4–6h <i style="background:#fff2a8"></i>6h+</span>
+    </div>
+  </section>
+  <aside id="side"></aside>
+</main>
+</div>
+
+<script type="module">
+/* ============================================================
+   Backyard Planner — 1902 Eagle Falls Dr, Houston TX 77077
+   Geometry is redrawn from the Sept 2026 land title survey
+   (labelled dimensions, in feet) and from the walk-around photos.
+   Plan coordinates: x → toward the east-side neighbour (Lot 13),
+   y → toward the street (Eagle Falls), origin = rear corner at
+   Cherry Bend Dr. Plan "up" points N 30°46' E (from the survey).
+   ============================================================ */
+const LOT = {w:70.46, d:120, north:30.77};   // north = bearing (deg) of plan +y
+const LAT = 29.74, LON = -95.60;
+const RAD = Math.PI/180;
+
+/* ---------- existing site (feet) ---------- */
+const HOUSE  = [[12.3,42.1],[52.0,42.1],[52.0,28.5],[65.3,28.5],[65.3,92.3],[12.3,88.5]];
+const GARAGE = [[11.4,10.8],[32.7,10.8],[32.7,32.5],[11.4,32.5]];
+const PATIO  = [[19.6,42.1],[52.0,42.1],[52.0,28.8],[32.7,28.8],[32.7,32.5],[19.6,32.5]];
+const COVERED= [[19.6,32.7],[23.7,32.7],[23.7,42.1],[19.6,42.1]];
+const NOOK   = [[11.4,35.0],[19.6,35.0],[19.6,42.1],[11.4,42.1]];           // AC + utility sink
+const LAWN   = [[38.7,28.6],[70.46,28.6],[70.46,13.8],[69.1,12.7],[64.4,7.7],[59.8,4.6],[55.2,3.5],[50.6,3.3],[46.0,5.5],[41.4,6.7],[38.5,7.3],[38.3,14.2]];
+const SIDE   = [[65.3,28.6],[70.46,28.6],[70.46,92],[65.3,92]];
+const YARD   = [[10.4,0],[70.46,0],[70.46,43],[10.4,43]];
+const UE     = [[0,0],[70.46,0],[70.46,8],[0,8]];             // 8' utility easement along the rear line
+const AE     = [[50.5,8],[70.46,8],[70.46,16],[50.5,16]];     // 8' x 20' aerial easement
+const FENCE  = [[[10.4,0],[70.46,0]],[[70.46,0],[70.46,92]],[[10.4,0],[10.4,10.8]],[[10.4,35],[10.4,43]]];
+const AC = [{x:14.6,y:39.6,w:2.6,d:2.6},{x:17.5,y:39.6,w:2.6,d:2.6}];
+const SINK = {x:13.2,y:36.6,w:2,d:1.5};
+const HOUSE_H = 12, GARAGE_H = 10, FENCE_H = 6;
+
+/* ---------- catalog ---------- */
+// sun: [min,max] hours of direct sun on the chosen date.  kind drives drawing, shading and warnings.
+const CATALOG = [
+ {cat:'Structures & features', items:[
+  {k:'pergola', name:'Pergola',            w:12, d:10, h:9,   kind:'struct', color:'#a07f58', shade:.55, note:'Slatted roof throws dappled shade. Anchor for Gulf wind; check deed restrictions and permit rules.'},
+  {k:'sail',    name:'Shade sail',         w:12, d:12, h:9,   kind:'struct', color:'#8fb4c9', shade:.7,  note:'Quick, cheap afternoon shade. Take it down for tropical storms.'},
+  {k:'shed',    name:'Storage shed',       w:8,  d:6,  h:8,   kind:'struct', color:'#8d98a3', shade:1,   note:'Solid shade. Needs a pad; check deed restrictions and permit rules.'},
+  {k:'firepit', name:'Fire pit',           w:4,  d:4,  h:1.2, kind:'struct', color:'#b5654a', shape:'circle', note:'Keep about 10 ft from structures and out of the oak canopy.'},
+  {k:'seating', name:'Lounge set',         w:8,  d:8,  h:2.6, kind:'flat',   color:'#6e5f4e', note:'Roughly the size of your current sectional + table.'},
+  {k:'turf',    name:'Dog / play patch',   w:8,  d:12, h:.1,  kind:'flat',   color:'#6fae5b', note:'Artificial turf or sod; gravel drains better on Houston clay.'},
+  {k:'water',   name:'Water feature',      w:4,  d:4,  h:1.5, kind:'struct', color:'#5aa7c9', shape:'circle', note:'Needs power; keep it clear of oak leaf-fall.'},
+  {k:'rain',    name:'Rain barrel',        w:2.2,d:2.2,h:3.2, kind:'struct', color:'#4f7d8a', shape:'circle', note:'Roof runoff from the garage gutter works well.'},
+  {k:'compost', name:'Compost bin',        w:3,  d:3,  h:3,   kind:'struct', color:'#6b5a3f', note:'Oak leaves are great compost fuel.'}]},
+ {cat:'Beds', items:[
+  {k:'bed48',   name:'Raised bed 4×8',     w:8,  d:4,  h:1.5, kind:'bed', color:'#7a5a3a', sun:[6,12], note:'Best answer to Houston clay. 10+ in of soil mix. Veggies want 6+ h of sun.'},
+  {k:'bed36',   name:'Raised bed 3×6',     w:6,  d:3,  h:1.5, kind:'bed', color:'#7a5a3a', sun:[6,12], note:'Good for herbs or a kitchen bed by the patio.'},
+  {k:'herb',    name:'Herb planter',       w:4,  d:2,  h:1.2, kind:'bed', color:'#6b8e5a', sun:[5,12], note:'Rosemary, thyme, basil, oregano, mint (mint in its own pot).'},
+  {k:'shadebed',name:'Shade bed',          w:8,  d:4,  h:.6,  kind:'bed', color:'#4d6b4a', sun:[0,4],  note:'Cast iron plant, ferns, ginger, turk\'s cap.'}]},
+ {cat:'Trees', items:[
+  {k:'crape',   name:'Crape myrtle',       w:12, d:12, h:18,  kind:'tree', color:'#d98aa8', sun:[6,12], shade:.5, note:'Tough, long summer bloom. Choose a mildew-resistant variety (Natchez, Muskogee).'},
+  {k:'fig',     name:'Fig · Celeste',      w:10, d:10, h:10,  kind:'tree', color:'#6f9b4e', sun:[6,12], shade:.5, note:'Thrives in Houston. Prune to 8–10 ft for easy picking.'},
+  {k:'satsuma', name:'Satsuma mandarin',   w:8,  d:8,  h:9,   kind:'tree', color:'#e69a2e', sun:[6,12], shade:.55, note:'Cold-hardy citrus. Cover below ~28°F. Plant in fall or early spring.'},
+  {k:'lemon',   name:'Meyer lemon',        w:7,  d:7,  h:7,   kind:'tree', color:'#e8d44d', sun:[6,12], shade:.5, note:'Needs freeze protection; fine in a big pot you can roll.'},
+  {k:'yaupon',  name:'Yaupon holly',       w:8,  d:8,  h:14,  kind:'tree', color:'#4f8a5b', sun:[2,12], shade:.6, note:'Native evergreen. Handles shade, drought, and wet clay.'},
+  {k:'persimmon',name:'Texas persimmon',   w:12, d:12, h:15,  kind:'tree', color:'#8aa17a', sun:[4,12], shade:.5, note:'Native, peeling bark, drought-proof. Fruit is eaten by birds.'},
+  {k:'littlegem',name:'Little Gem magnolia',w:10,d:10, h:22,  kind:'tree', color:'#2f6b3c', sun:[4,12], shade:.75, note:'Tall for this yard: keep out of both easements.'}]},
+ {cat:'Shrubs & perennials', items:[
+  {k:'turks',   name:'Turk\'s cap',        w:4,  d:4,  h:4,   kind:'shrub', color:'#d9423e', sun:[2,6],  note:'Native hummingbird plant that loves part shade. Perfect under the oak.'},
+  {k:'castiron',name:'Cast iron plant',    w:2.5,d:2.5,h:2.5, kind:'shrub', color:'#2f5d3a', sun:[0,3],  note:'Indestructible in deep shade.'},
+  {k:'ginger',  name:'Shell ginger',       w:4,  d:4,  h:5,   kind:'shrub', color:'#7fb069', sun:[1,5],  note:'Lush tropical look in shade; may die back in a hard freeze.'},
+  {k:'muhly',   name:'Gulf muhly',         w:3,  d:3,  h:3,   kind:'shrub', color:'#e7a1c4', sun:[6,12], note:'Pink plumes in fall. Great in gravel.'},
+  {k:'salvia',  name:'Salvia greggii',     w:3,  d:3,  h:3,   kind:'shrub', color:'#e4505d', sun:[6,12], note:'Tough bloomer, pollinators love it.'},
+  {k:'lantana', name:'Lantana',            w:4,  d:4,  h:3,   kind:'shrub', color:'#f2a33c', sun:[6,12], note:'Heat-proof color. Cut back in late winter.'},
+  {k:'esperanza',name:'Esperanza',         w:5,  d:5,  h:6,   kind:'shrub', color:'#f6d130', sun:[6,12], note:'Yellow bells from May to frost.'},
+  {k:'texassage',name:'Texas sage',        w:5,  d:5,  h:5,   kind:'shrub', color:'#9db4b0', sun:[6,12], note:'Silver foliage, purple blooms after rain. Hates wet feet.'},
+  {k:'rose',    name:'Knock Out rose',     w:4,  d:4,  h:4,   kind:'shrub', color:'#e0457b', sun:[6,12], note:'Low maintenance rose.'},
+  {k:'plumbago',name:'Blue plumbago',      w:4,  d:4,  h:4,   kind:'shrub', color:'#7aa6e8', sun:[4,12], note:'Soft blue flowers; dies back and returns after freezes.'},
+  {k:'gardenia',name:'Gardenia',           w:4,  d:4,  h:4,   kind:'shrub', color:'#f1f1e8', sun:[3,8],  note:'Wants acidic soil; use a large pot in Houston clay.'},
+  {k:'jasmine', name:'Confederate jasmine',w:6,  d:1.5,h:6,   kind:'shrub', color:'#e9f2dc', sun:[3,12], note:'Fragrant evergreen vine. Put it on the lattice or fence.'}]},
+ {cat:'Edibles', items:[
+  {k:'blueberry',name:'Blueberry (pot)',   w:3,  d:3,  h:4,   kind:'shrub', color:'#5a6fa8', sun:[5,10], note:'Rabbiteye varieties. Grow in a pot with acid mix, since Houston soil is too alkaline.'},
+  {k:'rosemary',name:'Rosemary',           w:3,  d:3,  h:3,   kind:'shrub', color:'#6c8f6b', sun:[6,12], note:'Perennial in Houston. Needs good drainage.'}]}
+];
+const DEF = {}; CATALOG.forEach(c => c.items.forEach(i => DEF[i.k] = i));
+
+/* ---------- state ---------- */
+const KEY = 'backyard-planner-v1';
+let _id = 1; const uid = () => 'i' + Date.now().toString(36) + (_id++);
+const mk = (k,x,y,rot=0) => ({id:uid(), k, x, y, rot, w:DEF[k].w, d:DEF[k].d});
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+function defaultState(){
+  return { active:0, oak:{x:37, y:4, r:16}, date:'2026-10-11', hour:17.5,
+    sc:[
+      {name:'A · As it is today', items:[]},
+      {name:'B · Edible garden', items:[mk('bed48',56,24),mk('bed48',65,24),mk('bed48',60,18.5),mk('salvia',45,26),mk('salvia',49,26),mk('herb',48,33.5),mk('rosemary',35.5,24),mk('turks',31,6),mk('castiron',34,10)]},
+      {name:'C · Entertainer', items:[mk('pergola',41,35.5),mk('firepit',50,20),mk('seating',28,37),mk('turks',31,6),mk('ginger',36,10),mk('muhly',62,10.5),mk('muhly',66,10.5),mk('lantana',58,10.5),mk('jasmine',40,1.5)]}
+    ]};
+}
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)); if (!S || !Array.isArray(S.sc)) S = null; } catch(e) { S = null; }
+S = S || defaultState();
+const sc = () => S.sc[S.active];
+let sel = null;
+const hist = [];
+function snap(){ hist.push(JSON.stringify(S)); if (hist.length > 80) hist.shift(); }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+
+/* ---------- sun ---------- */
+function isDST(Y,M,D){
+  const nth = (m,wd,n) => { const f = new Date(Date.UTC(Y,m,1)).getUTCDay(); return 1 + ((wd - f + 7) % 7) + 7*(n-1); };
+  const start = nth(2,0,2), end = nth(10,0,1);
+  const v = M*100 + D;
+  return v >= 300 + start && v < 1000 + 100 + end;
+}
+function sunPos(date, hour){
+  const [Y,M,D] = date.split('-').map(Number);
+  const doy = Math.round((Date.UTC(Y,M-1,D) - Date.UTC(Y,0,0)) / 864e5);
+  const tz = isDST(Y,M,D) ? -5 : -6;
+  const g = 2*Math.PI/365 * (doy - 1 + (hour - 12)/24);
+  const eqt = 229.18*(0.000075 + 0.001868*Math.cos(g) - 0.032077*Math.sin(g) - 0.014615*Math.cos(2*g) - 0.040849*Math.sin(2*g));
+  const dec = 0.006918 - 0.399912*Math.cos(g) + 0.070257*Math.sin(g) - 0.006758*Math.cos(2*g) + 0.000907*Math.sin(2*g) - 0.002697*Math.cos(3*g) + 0.00148*Math.sin(3*g);
+  const tst = hour*60 + eqt + 4*LON - 60*tz;
+  const ha = (tst/4 - 180) * RAD, lat = LAT * RAD;
+  const alt = Math.asin(Math.sin(lat)*Math.sin(dec) + Math.cos(lat)*Math.cos(dec)*Math.cos(ha));
+  const az = Math.atan2(Math.sin(ha), Math.cos(ha)*Math.sin(lat) - Math.tan(dec)*Math.cos(lat)) + Math.PI;   // from north, clockwise
+  return {alt, az};
+}
+// unit vector toward the sun in plan axes (x right, y toward the street, z up)
+function sunVec(sp){
+  const E = Math.sin(sp.az)*Math.cos(sp.alt), N = Math.cos(sp.az)*Math.cos(sp.alt), U = Math.sin(sp.alt);
+  const th = LOT.north * RAD;
+  return {x: E*Math.cos(th) - N*Math.sin(th), y: E*Math.sin(th) + N*Math.cos(th), z: U};
+}
+const fmtHour = h => { const hh = Math.floor(h), mm = Math.round((h-hh)*60); const m2 = mm === 60 ? 0 : mm, h2 = mm === 60 ? hh+1 : hh; return `${((h2+11)%12)+1}:${String(m2).padStart(2,'0')} ${h2 >= 12 ? 'PM' : 'AM'}`; };
+const compass = az => ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(((az/RAD)%360)/22.5) % 16];
+
+/* ---------- geometry helpers ---------- */
+function itemPoly(it){
+  const d = DEF[it.k], rx = it.w/2, ry = it.d/2;
+  let pts;
+  if (d.shape === 'circle') { pts = []; for (let i = 0; i < 20; i++) { const a = i/20*2*Math.PI; pts.push([rx*Math.cos(a), ry*Math.sin(a)]); } }
+  else pts = [[-rx,-ry],[rx,-ry],[rx,ry],[-rx,ry]];
+  const c = Math.cos(it.rot*RAD), s = Math.sin(it.rot*RAD);
+  return pts.map(([px,py]) => [it.x + px*c - py*s, it.y + px*s + py*c]);
+}
+const inPoly = (p, poly) => { let c = false; for (let i = 0, j = poly.length-1; i < poly.length; j = i++) { const [xi,yi] = poly[i], [xj,yj] = poly[j]; if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj-xi)*(p[1]-yi)/(yj-yi) + xi) c = !c; } return c; };
+function segX(a,b,c,d){ const r = [b[0]-a[0], b[1]-a[1]], s = [d[0]-c[0], d[1]-c[1]]; const den = r[0]*s[1] - r[1]*s[0]; if (Math.abs(den) < 1e-9) return false; const t = ((c[0]-a[0])*s[1] - (c[1]-a[1])*s[0]) / den, u = ((c[0]-a[0])*r[1] - (c[1]-a[1])*r[0]) / den; return t >= 0 && t <= 1 && u >= 0 && u <= 1; }
+function overlap(A,B){
+  for (let i = 0; i < A.length; i++) for (let j = 0; j < B.length; j++) if (segX(A[i],A[(i+1)%A.length],B[j],B[(j+1)%B.length])) return true;
+  return inPoly(A[0],B) || inPoly(B[0],A);
+}
+const rectPoly = (x,y,w,d) => [[x-w/2,y-d/2],[x+w/2,y-d/2],[x+w/2,y+d/2],[x-w/2,y+d/2]];
+
+/* ---------- shade casters & sun-hours ---------- */
+function occluders(){
+  const o = [{t:'poly', pts:HOUSE, h:HOUSE_H, op:1}, {t:'poly', pts:GARAGE, h:GARAGE_H, op:1}];
+  FENCE.forEach(([a,b]) => o.push({t:'seg', a, b, h:FENCE_H, op:1}));
+  o.push({t:'cyl', x:S.oak.x, y:S.oak.y, r:S.oak.r, z0:14, z1:36, op:.65});
+  sc().items.forEach(it => {
+    const d = DEF[it.k]; if (!d.shade) return;
+    if (d.kind === 'tree') o.push({t:'cyl', x:it.x, y:it.y, r:it.w/2, z0:d.h*.35, z1:d.h, op:d.shade});
+    else o.push({t:'poly', pts:itemPoly(it), h:d.h, op:d.shade});
+  });
+  return o;
+}
+function blocked(px, py, u, ta, o){          // returns the fraction of light let through
+  let light = 1;
+  for (const c of o) {
+    if (c.t === 'cyl') {
+      const dx = px - c.x, dy = py - c.y, b = dx*u[0] + dy*u[1], cc = dx*dx + dy*dy - c.r*c.r, disc = b*b - cc;
+      if (disc <= 0) continue;
+      const sq = Math.sqrt(disc); let t1 = -b - sq, t2 = -b + sq; if (t2 <= 0) continue; if (t1 < 0) t1 = 0;
+      if (t1*ta < c.z1 && t2*ta > c.z0) light *= (1 - c.op);
+    } else if (c.t === 'seg') {
+      const t = rayseg(px, py, u, c.a, c.b); if (t !== null && t*ta < c.h) light *= (1 - c.op);
+    } else {
+      const ts = []; for (let i = 0; i < c.pts.length; i++) { const t = rayseg(px, py, u, c.pts[i], c.pts[(i+1)%c.pts.length]); if (t !== null) ts.push(t); }
+      if (ts.length) { ts.sort((a,b) => a-b); if (ts[0]*ta < c.h) light *= (1 - c.op); }
+    }
+    if (light < .02) return 0;
+  }
+  return light;
+}
+function rayseg(px,py,u,a,b){
+  const sx = b[0]-a[0], sy = b[1]-a[1], den = u[0]*sy - u[1]*sx; if (Math.abs(den) < 1e-9) return null;
+  const t = ((a[0]-px)*sy - (a[1]-py)*sx) / den, s = ((a[0]-px)*u[1] - (a[1]-py)*u[0]) / den;
+  return (t > 1e-6 && s >= 0 && s <= 1) ? t : null;
+}
+const GX0 = 0, GY0 = 0, GW = 71, GH = 60;      // sun-hours grid (1 ft cells)
+let heat = null, heatKey = '';
+let dragging = false;
+function computeHeat(){
+  if (dragging && heat) return heat;
+  const key = S.date + JSON.stringify(sc().items.map(i => [i.k,i.x,i.y,i.w,i.d,i.rot])) + JSON.stringify(S.oak);
+  if (key === heatKey) return heat; heatKey = key;
+  const o = occluders(), samples = [];
+  for (let h = 4; h <= 21; h += .25) { const sp = sunPos(S.date, h); if (sp.alt > 2*RAD) { const v = sunVec(sp), hz = Math.hypot(v.x, v.y); samples.push({u:[v.x/hz, v.y/hz], ta:Math.tan(sp.alt)}); } }
+  const g = new Float32Array(GW*GH), solid = [HOUSE, GARAGE];
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+    const px = GX0 + i + .5, py = GY0 + j + .5;
+    if (solid.some(p => inPoly([px,py], p))) { g[j*GW+i] = -1; continue; }
+    let hrs = 0; for (const s of samples) hrs += .25 * blocked(px, py, s.u, s.ta, o);
+    g[j*GW+i] = hrs;
+  }
+  return heat = g;
+}
+const hoursAt = (x,y) => { const g = computeHeat(), i = Math.floor(x-GX0), j = Math.floor(y-GY0); return (i < 0 || j < 0 || i >= GW || j >= GH) ? null : g[j*GW+i]; };
+function heatColor(h){
+  const stops = [[0,[22,30,60]],[2,[42,58,102]],[3,[47,143,138]],[4.5,[224,184,74]],[6,[255,242,168]],[9,[255,252,220]]];
+  if (h <= 0) return stops[0][1]; for (let i = 1; i < stops.length; i++) if (h <= stops[i][0]) { const [a,ca] = stops[i-1], [b,cb] = stops[i], t = (h-a)/(b-a); return ca.map((v,k) => v + (cb[k]-v)*t); }
+  return stops[stops.length-1][1];
+}
+
+/* ---------- warnings for an item ---------- */
+function flagsFor(it){
+  const d = DEF[it.k], P = itemPoly(it), out = [];
+  const tall = d.kind === 'tree' || (d.kind === 'struct' && d.h > 4);
+  const lowPlant = d.kind === 'shrub';
+  if (overlap(P, UE)) out.push([tall ? 'bad' : lowPlant ? 'info' : 'warn', tall ? 'In the 8 ft rear utility easement: trees and structures can be removed by the utility. Keep low plants only.' : lowPlant ? 'Sits in the rear utility easement. Fine for a low plant; the utility may dig it up.' : 'In the rear utility easement. Avoid hardscape and footings here.']);
+  if (overlap(P, AE)) out.push([tall ? 'bad' : lowPlant ? 'info' : 'warn', tall ? 'Under the aerial (overhead-line) easement: keep it low or move it clear.' : lowPlant ? 'Under the overhead-line easement. Fine for a low plant.' : 'Inside the aerial easement. Keep it low.']);
+  if (overlap(P, HOUSE) || overlap(P, GARAGE)) out.push(['bad', 'Overlaps the house or garage.']);
+  if (overlap(P, NOOK)) out.push(['bad', 'Blocks the AC and utility nook. Keep 3 ft clear for service access.']);
+  const dOak = Math.hypot(it.x - S.oak.x, it.y - S.oak.y);
+  if ((d.kind === 'struct' || d.kind === 'bed' || d.kind === 'flat') && dOak < 15 + Math.max(it.w,it.d)/2) out.push(['warn', 'Inside the live oak\'s root zone (~15 ft from the trunk). Avoid fill, trenching and footings here. Use above-ground builds or move it.']);
+  if ((d.kind === 'tree' || d.kind === 'shrub') && inPoly([it.x, it.y], PATIO)) out.push(['warn', 'Centered on the tile patio. Use a pot or cut a planting pocket.']);
+  if (d.kind === 'tree') {
+    const nearFence = Math.min(it.y - 0, 70.46 - it.x) < it.w/2 - 1;
+    if (nearFence) out.push(['warn', 'Canopy will reach the fence. Plan on pruning or move it in.']);
+  }
+  if (d.sun) {
+    const h = hoursAt(it.x, it.y);
+    if (h !== null && h >= 0) {
+      if (h < d.sun[0] - .5) out.push(['warn', `Only ${h.toFixed(1)} h of direct sun on this date. It wants ${d.sun[0]}+ h.`]);
+      else if (h > d.sun[1] + .5) out.push(['warn', `${h.toFixed(1)} h of sun is more than it wants (up to ${d.sun[1]} h). Give it afternoon shade.`]);
+      else out.push(['ok', `Sun fit looks good: ${h.toFixed(1)} h on this date (wants ${d.sun[0]}–${d.sun[1]} h).`]);
+    }
+  }
+  return out;
+}
+
+// scan the fenced yard for the position with the fewest conflicts and the best sun fit
+function bestSpot(it){
+  const d = DEF[it.k]; let best = null; dragging = true;      // reuse the cached sun-hours grid
+  try {
+    for (let y = 1.5; y <= 42; y += 1) for (let x = 11; x <= 69.5; x += 1) {
+      const c = {...it, x, y}, P = itemPoly(c);
+      if (P.some(([px,py]) => px < 10.6 || px > 70.2 || py < .3 || py > 43.5)) continue;
+      let sc = 0; for (const f of flagsFor(c)) sc += f[0] === 'bad' ? 100 : f[0] === 'warn' ? 10 : 0;
+      if (d.kind !== 'flat' && d.kind !== 'struct' && d.kind !== 'bed' && overlap(P, PATIO)) sc += 5;
+      sc += Math.hypot(x - it.x, y - it.y) * .02;
+      if (!best || sc < best.s) best = {s:sc, x, y};
+    }
+  } finally { dragging = false; }
+  return best;
+}
+
+/* ============================================================
+   2D PLAN (SVG).  Plan y is flipped into SVG space: svgY = -y
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const svg = $('#plan'), stage = $('#stage');
+const L = {shadow:true, heat:false, ease:true, grid:true, label:true};
+let view = {cx:40, cy:20, w:92};
+let mode = '2d';
+const pts = p => p.map(([x,y]) => `${x.toFixed(2)},${(-y).toFixed(2)}`).join(' ');
+function applyView(){
+  const r = stage.getBoundingClientRect(), asp = (r.height || 1) / (r.width || 1), h = view.w * asp;
+  svg.setAttribute('viewBox', `${view.cx - view.w/2} ${-view.cy - h/2} ${view.w} ${h}`);
+}
+function fitView(){
+  const r = stage.getBoundingClientRect(), asp = r.height / r.width;
+  const w = Math.max(88, 66 / asp); view = {cx:40, cy:25, w};
+  applyView();
+}
+function toPlan(ev){
+  const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+  const m = svg.getScreenCTM().inverse(), q = pt.matrixTransform(m); return {x:q.x, y:-q.y};
+}
+function shadowShapes(){
+  const sp = sunPos(S.date, S.hour); if (sp.alt <= 1*RAD) return '';
+  const v = sunVec(sp), k = h => [-v.x/v.z*h, -v.y/v.z*h];
+  const solid = [], soft = [];
+  const prism = (P, h, bucket) => {
+    const [ox,oy] = k(h);
+    for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i+1)%P.length]; bucket.push(`<polygon points="${pts([a,b,[b[0]+ox,b[1]+oy],[a[0]+ox,a[1]+oy]])}"/>`); }
+    bucket.push(`<polygon points="${pts(P.map(([x,y]) => [x+ox,y+oy]))}"/>`);
+  };
+  prism(HOUSE, HOUSE_H, solid); prism(GARAGE, GARAGE_H, solid);
+  FENCE.forEach(([a,b]) => { const [ox,oy] = k(FENCE_H); solid.push(`<polygon points="${pts([a,b,[b[0]+ox,b[1]+oy],[a[0]+ox,a[1]+oy]])}"/>`); });
+  const canopy = (x,y,r,z0,z1,bucket) => { const [ox,oy] = k((z0+z1)/2); bucket.push(`<ellipse cx="${(x+ox).toFixed(2)}" cy="${(-(y+oy)).toFixed(2)}" rx="${r}" ry="${r}"/>`); };
+  canopy(S.oak.x, S.oak.y, S.oak.r, 14, 36, soft);
+  sc().items.forEach(it => {
+    const d = DEF[it.k]; if (!d.shade) return;
+    if (d.kind === 'tree') canopy(it.x, it.y, it.w/2, d.h*.35, d.h, soft);
+    else prism(itemPoly(it), d.h, d.shade >= .9 ? solid : soft);
+  });
+  return `<g fill="#05080c" opacity=".42">${solid.join('')}</g><g fill="#05080c" opacity=".26">${soft.join('')}</g>`;
+}
+function heatImage(){
+  const g = computeHeat(), cv = document.createElement('canvas'); cv.width = GW; cv.height = GH;
+  const cx = cv.getContext('2d'), im = cx.createImageData(GW, GH);
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+    const h = g[j*GW+i], o = ((GH-1-j)*GW + i)*4;      // image row 0 = top = highest y
+    if (h < 0) { im.data[o+3] = 0; continue; }
+    const c = heatColor(h); im.data[o] = c[0]; im.data[o+1] = c[1]; im.data[o+2] = c[2]; im.data[o+3] = 205;
+  }
+  cx.putImageData(im, 0, 0);
+  return `<image href="${cv.toDataURL()}" x="${GX0}" y="${-(GY0+GH)}" width="${GW}" height="${GH}" preserveAspectRatio="none"/>`;
+}
+function itemSvg(it){
+  const d = DEF[it.k], rx = it.w/2, ry = it.d/2, fl = flagsFor(it), bad = fl.some(f => f[0] === 'bad'), warn = fl.some(f => f[0] === 'warn');
+  const stroke = bad ? '#ff6b6b' : warn ? '#ffb454' : '#0b0f13';
+  let body = '';
+  const op = d.kind === 'tree' ? .62 : d.kind === 'shrub' ? .85 : 1;
+  if (d.kind === 'tree') body = `<circle r="${rx}" fill="${d.color}" fill-opacity=".55" stroke="${stroke}" stroke-width=".25"/><circle r=".6" fill="#5b4330"/>`;
+  else if (d.kind === 'shrub') body = `<ellipse rx="${rx}" ry="${ry}" fill="${d.color}" fill-opacity="${op}" stroke="${stroke}" stroke-width=".2"/>`;
+  else if (d.shape === 'circle') body = `<circle r="${rx}" fill="${d.color}" stroke="${stroke}" stroke-width=".25"/>` + (it.k === 'firepit' ? `<circle r="${rx*.55}" fill="#ff8a3d"/>` : '');
+  else if (it.k === 'pergola') body = `<rect x="${-rx}" y="${-ry}" width="${it.w}" height="${it.d}" fill="${d.color}" fill-opacity=".25" stroke="${stroke}" stroke-width=".25"/>` + Array.from({length:Math.floor(it.w/1.1)}, (_,i) => `<line x1="${-rx+(i+.5)*it.w/Math.floor(it.w/1.1)}" y1="${-ry}" x2="${-rx+(i+.5)*it.w/Math.floor(it.w/1.1)}" y2="${ry}" stroke="${d.color}" stroke-width=".28"/>`).join('') + [[-rx,-ry],[rx,-ry],[rx,ry],[-rx,ry]].map(([x,y]) => `<rect x="${x-.45}" y="${y-.45}" width=".9" height=".9" fill="#4a3a28"/>`).join('');
+  else if (it.k === 'sail') body = `<rect x="${-rx}" y="${-ry}" width="${it.w}" height="${it.d}" fill="${d.color}" fill-opacity=".45" stroke="${stroke}" stroke-width=".25" stroke-dasharray="1 .6"/>`;
+  else if (it.k === 'shed') body = `<rect x="${-rx}" y="${-ry}" width="${it.w}" height="${it.d}" fill="${d.color}" stroke="${stroke}" stroke-width=".25"/><line x1="${-rx}" y1="${-ry}" x2="${rx}" y2="${ry}" stroke="#0004" stroke-width=".2"/><line x1="${rx}" y1="${-ry}" x2="${-rx}" y2="${ry}" stroke="#0004" stroke-width=".2"/>`;
+  else if (d.kind === 'bed') body = `<rect x="${-rx}" y="${-ry}" width="${it.w}" height="${it.d}" fill="${d.color}" stroke="#d2b48c" stroke-width=".35"/><rect x="${-rx+.5}" y="${-ry+.5}" width="${it.w-1}" height="${it.d-1}" fill="#3e2c1c"/>` + Array.from({length:Math.max(1,Math.floor(it.w/1.6))}, (_,i) => `<circle cx="${-rx+.9+i*(it.w-1.8)/Math.max(1,Math.floor(it.w/1.6)-1||1)}" cy="0" r=".5" fill="#6fae5b"/>`).join('');
+  else body = `<rect x="${-rx}" y="${-ry}" width="${it.w}" height="${it.d}" rx=".4" fill="${d.color}" fill-opacity=".9" stroke="${stroke}" stroke-width=".25"/>`;
+  const fs = Math.max(.9, Math.min(1.5, Math.min(it.w, 12)/6));
+  const label = L.label ? `<text text-anchor="middle" y="${(fs*.35).toFixed(2)}" font-size="${fs.toFixed(2)}" fill="#fff" stroke="#000a" stroke-width=".22" paint-order="stroke">${esc(d.name)}</text>` : '';
+  const dot = (bad || warn) ? `<circle cx="${rx}" cy="${-ry}" r=".9" fill="${bad ? '#ff6b6b' : '#ffb454'}" stroke="#000" stroke-width=".15"/>` : '';
+  const ring = it.id === sel ? `<rect x="${-rx-.6}" y="${-ry-.6}" width="${it.w+1.2}" height="${it.d+1.2}" fill="none" stroke="#7bd389" stroke-width=".3" stroke-dasharray="1 .7"/>` : '';
+  return `<g data-id="${it.id}" transform="translate(${it.x},${-it.y}) rotate(${-it.rot})" style="cursor:move">${body}</g>` +
+         `<g transform="translate(${it.x},${-it.y}) rotate(${-it.rot})" style="pointer-events:none">${ring}${dot}</g>` +
+         `<g transform="translate(${it.x},${-it.y})" style="pointer-events:none">${label}</g>`;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function gridSvg(){
+  let s = '<g stroke="#ffffff14" stroke-width=".08">';
+  for (let x = 0; x <= 75; x += 5) s += `<line x1="${x}" y1="${-65}" x2="${x}" y2="3"/>`;
+  for (let y = -5; y <= 65; y += 5) s += `<line x1="-5" y1="${-y}" x2="76" y2="${-y}"/>`;
+  s += '</g><g font-size="1.3" fill="#ffffff55">';
+  for (let x = 0; x <= 70; x += 10) s += `<text x="${x}" y="3.6" text-anchor="middle">${x}'</text>`;
+  for (let y = 10; y <= 60; y += 10) s += `<text x="-1" y="${-y+.4}" text-anchor="end">${y}'</text>`;
+  return s + '</g>';
+}
+function renderPlan(){
+  const sp = sunPos(S.date, S.hour), night = sp.alt <= 0;
+  const th = LOT.north;   // north arrow rotates CCW by th from "up"
+  let g = '';
+  g += `<rect x="-30" y="-130" width="140" height="170" fill="#141b20"/>`;
+  g += `<polygon points="${pts([[0,0],[LOT.w,0],[LOT.w,LOT.d],[0,LOT.d]])}" fill="#1b2a22"/>`;      // lot
+  g += `<polygon points="${pts(YARD)}" fill="#c9c6bd"/>`;                                           // gravel
+  g += `<polygon points="${pts(SIDE)}" fill="#5a9a4b"/>`;
+  g += `<polygon points="${pts(LAWN)}" fill="#4f9a45" stroke="#4a4f57" stroke-width="1.1" stroke-linejoin="round"/>`;
+  g += `<polygon points="${pts(PATIO)}" fill="#8e949c"/>`;
+  g += `<polygon points="${pts(COVERED)}" fill="#a9afb6" stroke="#6c727a" stroke-width=".15"/>`;
+  g += `<polygon points="${pts(NOOK)}" fill="#b9b6ad"/>`;
+  AC.forEach(a => g += `<rect x="${a.x-a.w/2}" y="${-(a.y+a.d/2)}" width="${a.w}" height="${a.d}" fill="#7c868f" stroke="#2a3138" stroke-width=".15"/><circle cx="${a.x}" cy="${-a.y}" r="${a.w*.32}" fill="none" stroke="#2a3138" stroke-width=".15"/>`);
+  g += `<rect x="${SINK.x-SINK.w/2}" y="${-(SINK.y+SINK.d/2)}" width="${SINK.w}" height="${SINK.d}" fill="#e7eef2" stroke="#2a3138" stroke-width=".15"/>`;
+  g += `<polygon points="${pts(NOOK)}" fill="none" stroke="#ff6b6b" stroke-width=".18" stroke-dasharray=".8 .5"/>`;
+  g += `<polygon points="${pts(GARAGE)}" fill="#7e8da0" stroke="#34404d" stroke-width=".3"/>`;
+  g += `<polygon points="${pts(HOUSE)}" fill="#8fa3b8" stroke="#34404d" stroke-width=".3"/>`;
+  FENCE.forEach(([a,b]) => g += `<line x1="${a[0]}" y1="${-a[1]}" x2="${b[0]}" y2="${-b[1]}" stroke="#7a5e43" stroke-width=".5"/>`);
+  // oak
+  g += `<g data-oak="1" style="cursor:move"><circle cx="${S.oak.x}" cy="${-S.oak.y}" r="${S.oak.r}" fill="#2f6b3c" fill-opacity=".38" stroke="#6fbf7a" stroke-width=".2" stroke-dasharray="1.2 .8"/><circle cx="${S.oak.x}" cy="${-S.oak.y}" r="15" fill="none" stroke="#ffb454" stroke-opacity=".5" stroke-width=".15" stroke-dasharray=".5 .5"/><circle cx="${S.oak.x}" cy="${-S.oak.y}" r="1.3" fill="#5b4330"/></g>`;
+  if (L.ease) g += `<polygon points="${pts(UE)}" fill="#ff6b6b" fill-opacity=".14" stroke="#ff6b6b" stroke-width=".2" stroke-dasharray="1 .6"/><polygon points="${pts(AE)}" fill="#ffb454" fill-opacity=".2" stroke="#ffb454" stroke-width=".2" stroke-dasharray="1 .6"/>`;
+  if (L.heat) g += heatImage();
+  if (L.shadow && !L.heat) g += shadowShapes();
+  if (L.grid) g += gridSvg();
+  g += sc().items.map(itemSvg).join('');
+  if (L.label) {
+    g += `<g font-size="1.5" fill="#fff" stroke="#000b" stroke-width=".3" paint-order="stroke" text-anchor="middle" style="pointer-events:none">
+      <text x="30" y="${-47}">HOUSE</text><text x="22" y="${-21}" font-size="1.2">GARAGE</text><text x="36" y="${-38.5}" font-size="1.2">TILE PATIO</text>
+      <text x="15.5" y="${-36.5}" font-size=".9">AC / UTILITY</text><text x="55" y="${-9.7}" font-size="1.1" fill="#ffd9a0">AERIAL EASEMENT 8'×20'</text><text x="30" y="${-3.6}" font-size="1.1" fill="#ffb3b3">8' UTILITY EASEMENT</text>
+      <text x="53" y="${-14}" font-size="1.1">LAWN</text><text x="${S.oak.x}" y="${-S.oak.y-S.oak.r-1}" font-size="1.1" fill="#bdf0c7">LIVE OAK (drag to correct)</text></g>`;
+    g += `<g font-size="1.2" fill="#ffffff88" text-anchor="middle"><text x="40" y="${1.6}">REAR FENCE · faces ${compass((LOT.north+180)*RAD)}</text><text x="68" y="${-72}" transform="rotate(90 68 -72)" font-size="1.1">LOT 13 SIDE</text><text x="-1.8" y="-24" transform="rotate(-90 -1.8 -24)" font-size="1.1">CHERRY BEND DR</text></g>`;
+  }
+  // north arrow + scale bar (screen-anchored via a group we place near the lot's rear-right)
+  g += `<g transform="translate(77,-8)"><g transform="rotate(${-th})"><polygon points="0,-4 1.1,1 0,.3 -1.1,1" fill="#e8edf1"/><text y="-4.8" text-anchor="middle" font-size="1.6" fill="#e8edf1">N</text></g></g>`;
+  g += `<g transform="translate(60,5.4)" font-size="1.1" fill="#fff"><rect width="10" height=".5" fill="#fff"/><rect width="5" height=".5" fill="#111"/><text y="2" >0</text><text x="10" y="2" text-anchor="end">10 ft</text></g>`;
+  if (night) g += `<rect x="-30" y="-130" width="140" height="170" fill="#0a1020" opacity=".55" style="pointer-events:none"/>`;
+  svg.innerHTML = g;
+}
+
+/* ---------- panels ---------- */
+function renderPalette(){
+  const q = $('#search').value.trim().toLowerCase(), box = $('#cat'); let h = '';
+  for (const c of CATALOG) {
+    const its = c.items.filter(i => !q || (i.name + ' ' + c.cat).toLowerCase().includes(q)); if (!its.length) continue;
+    h += `<h3>${c.cat}</h3>` + its.map(i => `<button class="item" data-k="${i.k}"><span class="chip" style="background:${i.color}"></span>${esc(i.name)}<span class="s">${i.w}×${i.d} ft</span></button>`).join('');
+  }
+  box.innerHTML = h || '<div class="empty">No matches.</div>';
+}
+function renderSide(){
+  const it = sc().items.find(i => i.id === sel), box = $('#side'); let h = '';
+  const all = sc().items;
+  if (it) {
+    const d = DEF[it.k], fl = flagsFor(it);
+    h += `<h2>Selected</h2><b>${esc(d.name)}</b><div class="note">${esc(d.note || '')}</div>
+      <div class="row"><label>Width (ft)<input type="number" step="0.5" min="0.5" id="pw" value="${it.w}"></label><label>Depth (ft)<input type="number" step="0.5" min="0.5" id="pd" value="${it.d}"></label>
+      <label>Rotation (°)<input type="number" step="5" id="pr" value="${Math.round(it.rot)}"></label><label>Position (ft)<input id="pp" value="${it.x.toFixed(1)}, ${it.y.toFixed(1)}" readonly></label></div>
+      <div class="btns"><button id="bRot">Rotate 90°</button><button id="bDup">Duplicate</button><button id="bDel">Delete</button><button id="bBest" title="Move it to the best-fitting spot in the yard">Find a good spot</button></div>`;
+    if (d.sun) h += `<div class="note">Sun need: ${d.sun[0]}–${d.sun[1]} h direct sun</div>`;
+    h += fl.map(f => `<div class="flag ${f[0]}">${esc(f[1])}</div>`).join('');
+  } else {
+    h += `<h2>Selected</h2><div class="empty">Click a plant or feature in the list to add it, then drag it into place. Select it to see size, sun fit and warnings. Keys: <b>R</b> rotate, <b>Del</b> remove, arrows nudge.</div>`;
+  }
+  // layout-wide checks
+  const probs = [];
+  all.forEach(i => flagsFor(i).filter(f => f[0] === 'bad' || f[0] === 'warn').forEach(f => probs.push([f[0], `${DEF[i.k].name}: ${f[1]}`, i.id])));
+  h += `<h2>Layout check · ${esc(sc().name)}</h2>`;
+  h += all.length ? (probs.length ? probs.slice(0, 12).map(p => `<div class="flag ${p[0]}" data-sel="${p[2]}" style="cursor:pointer">${esc(p[1])}</div>`).join('') + (probs.length > 12 ? `<div class="note">…and ${probs.length-12} more</div>` : '') : '<div class="flag ok">No conflicts with easements, the oak root zone or AC access.</div>') : '<div class="empty">Empty layout.</div>';
+  h += `<h2>This spot</h2><div id="spot" class="note">Hover the plan to read sun-hours.</div>`;
+  h += `<h2>Houston notes</h2>
+  <details open><summary>Right now (Oct): planting season</summary><ul class="n"><li>Fall is the best time to plant trees, shrubs and perennials in Houston. Roots establish before summer.</li><li>Cool-season veggies go in now: greens, broccoli, carrots, onions, herbs.</li><li>Tomatoes and peppers: Feb–Mar and again in Aug.</li></ul></details>
+  <details><summary>Soil, freeze &amp; storms</summary><ul class="n"><li>Gulf Coast clay is heavy and alkaline. Raised beds or pots are the easy win.</li><li>USDA zone ~9b–10a. Usually first frost late Nov–Dec; keep frost cloth for citrus, ginger and plumbago.</li><li>Anchor pergolas and sails for tropical-storm wind.</li></ul></details>
+  <details><summary>The oak &amp; the easements</summary><ul class="n"><li>Live oak roots: no fill, no trenching, no footings within ~15 ft of the trunk. Prune in winter, with a certified arborist.</li><li>Rear 8 ft is a utility easement and the 8'×20' patch at right is aerial (overhead lines). Low plants only.</li><li>Call 811 before you dig. Check deed restrictions (survey note 6) and any permit rules before building.</li></ul></details>
+  <details><summary>Accuracy</summary><ul class="n"><li>Lot, house, garage, patio and easements come from the survey's labelled dimensions. The lawn curve, oak position and AC nook are traced from the survey and photos, so treat them as ±1–2 ft.</li><li>Shadows come from a real solar calculation for 29.74°N and 95.60°W, with the lot's true orientation (rear faces ${compass((LOT.north+180)*RAD)}). Neighbors' trees and fences are not modeled.</li></ul></details>`;
+  box.innerHTML = h;
+  updateSpot(null);
+}
+function updateSpot(p){
+  const el = $('#spot'); if (!el) return;
+  if (!p) { el.textContent = 'Hover the plan to read sun-hours.'; return; }
+  const h = hoursAt(p.x, p.y);
+  el.innerHTML = h === null ? '–' : h < 0 ? 'Inside a building.' : `<b style="color:var(--ink)">${h.toFixed(1)} h</b> of direct sun on ${S.date} · ${h >= 6 ? 'full sun' : h >= 4 ? 'part sun' : h >= 2 ? 'part shade' : 'shade'}`;
+}
+function renderHud(){
+  $('#date').value = S.date; $('#hour').value = S.hour; $('#hourTxt').textContent = fmtHour(S.hour);
+  const sp = sunPos(S.date, S.hour);
+  $('#sunTxt').innerHTML = sp.alt > 0 ? `Sun <b>${(sp.alt/RAD).toFixed(0)}°</b> up, from <b>${compass(sp.az)}</b>` : 'Sun is down';
+  $('#legend').style.display = L.heat ? 'flex' : 'none';
+}
+function renderScenarios(){
+  $('#scenario').innerHTML = S.sc.map((s,i) => `<option value="${i}" ${i === S.active ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
+}
+function refresh(){ renderPlan(); renderSide(); renderHud(); if (mode === '3d' && api3d) api3d.sync(); }
+function lightRefresh(){ renderPlan(); renderHud(); if (mode === '3d' && api3d) api3d.sun(); }
+
+/* ---------- interaction ---------- */
+function addItem(k){
+  snap(); const c = mode === '2d' ? {x:view.cx, y:view.cy} : {x:40, y:20};
+  const it = mk(k, Math.round(Math.min(Math.max(c.x, 4), 66)*2)/2, Math.round(Math.min(Math.max(c.y, 4), 40)*2)/2);
+  sc().items.push(it); sel = it.id; save(); refresh();
+}
+let drag = null;
+svg.addEventListener('pointerdown', ev => {
+  const g = ev.target.closest('[data-id]'), oak = ev.target.closest('[data-oak]');
+  svg.setPointerCapture(ev.pointerId);
+  if (g) { const it = sc().items.find(i => i.id === g.dataset.id); sel = it.id; const p = toPlan(ev); dragging = true; drag = {t:'item', it, dx:it.x-p.x, dy:it.y-p.y, moved:false, snapshotted:false}; renderPlan(); renderSide(); }
+  else if (oak) { const p = toPlan(ev); dragging = true; drag = {t:'oak', dx:S.oak.x-p.x, dy:S.oak.y-p.y, snapshotted:false}; }
+  else { sel = null; drag = {t:'pan', sx:ev.clientX, sy:ev.clientY, cx:view.cx, cy:view.cy}; svg.style.cursor = 'grabbing'; renderPlan(); renderSide(); }
+});
+svg.addEventListener('pointermove', ev => {
+  const p = toPlan(ev);
+  $('#readout').textContent = `${p.x.toFixed(1)} ft, ${p.y.toFixed(1)} ft` + (() => { const h = hoursAt(p.x, p.y); return h === null || h < 0 ? '' : ` · ${h.toFixed(1)} h sun`; })();
+  if (!drag) { updateSpot(p); return; }
+  if (drag.t === 'pan') { const r = svg.getBoundingClientRect(), k = view.w / r.width; view.cx = drag.cx - (ev.clientX - drag.sx)*k; view.cy = drag.cy + (ev.clientY - drag.sy)*k; applyView(); }
+  else if (drag.t === 'item') { if (!drag.snapshotted) { snap(); drag.snapshotted = true; } drag.it.x = Math.round((p.x + drag.dx)*4)/4; drag.it.y = Math.round((p.y + drag.dy)*4)/4; lightRefresh(); }
+  else if (drag.t === 'oak') { if (!drag.snapshotted) { snap(); drag.snapshotted = true; } S.oak.x = Math.round((p.x + drag.dx)*2)/2; S.oak.y = Math.round((p.y + drag.dy)*2)/2; lightRefresh(); }
+});
+const endDrag = () => { if (!drag) return; const was = drag; drag = null; dragging = false; svg.style.cursor = ''; if (was.t !== 'pan') { save(); refresh(); } };
+svg.addEventListener('pointerup', endDrag); svg.addEventListener('pointercancel', endDrag);
+svg.addEventListener('wheel', ev => { ev.preventDefault(); const p = toPlan(ev), f = ev.deltaY > 0 ? 1.12 : 1/1.12; view.w = Math.min(260, Math.max(14, view.w*f)); view.cx = p.x + (view.cx - p.x)*f; view.cy = p.y + (view.cy - p.y)*f; applyView(); }, {passive:false});
+const zoom = f => { view.w = Math.min(260, Math.max(14, view.w*f)); applyView(); };
+$('#zin').onclick = () => zoom(1/1.25); $('#zout').onclick = () => zoom(1.25); $('#zfit').onclick = fitView;
+$('#cat').addEventListener('click', ev => { const b = ev.target.closest('[data-k]'); if (b) addItem(b.dataset.k); });
+$('#search').addEventListener('input', renderPalette);
+$('#side').addEventListener('click', ev => {
+  const f = ev.target.closest('[data-sel]'); if (f) { sel = f.dataset.sel; renderPlan(); renderSide(); return; }
+  const it = sc().items.find(i => i.id === sel); if (!it) return;
+  if (ev.target.id === 'bRot') { snap(); it.rot = (it.rot + 90) % 360; save(); refresh(); }
+  if (ev.target.id === 'bDup') { snap(); const n = {...it, id:uid(), x:it.x+2, y:it.y+2}; sc().items.push(n); sel = n.id; save(); refresh(); }
+  if (ev.target.id === 'bBest') { const b = bestSpot(it); if (b) { snap(); it.x = b.x; it.y = b.y; save(); refresh(); } }
+  if (ev.target.id === 'bDel') { snap(); sc().items = sc().items.filter(i => i !== it); sel = null; save(); refresh(); }
+});
+$('#side').addEventListener('change', ev => {
+  const it = sc().items.find(i => i.id === sel); if (!it) return; const v = parseFloat(ev.target.value); if (!isFinite(v)) return;
+  snap(); if (ev.target.id === 'pw') it.w = Math.max(.5, v); if (ev.target.id === 'pd') it.d = Math.max(.5, v); if (ev.target.id === 'pr') it.rot = v; save(); refresh();
+});
+addEventListener('keydown', ev => {
+  if (/INPUT|SELECT|TEXTAREA/.test(ev.target.tagName) && ev.target.type !== 'range') return;
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { ev.preventDefault(); return undo(); }
+  const it = sc().items.find(i => i.id === sel); if (!it) return;
+  const st = ev.shiftKey ? 2 : .5;
+  if (ev.key === 'Delete' || ev.key === 'Backspace') { snap(); sc().items = sc().items.filter(i => i !== it); sel = null; }
+  else if (ev.key.toLowerCase() === 'r') { snap(); it.rot = (it.rot + (ev.shiftKey ? -15 : 15) + 360) % 360; }
+  else if (ev.key === 'ArrowLeft') { snap(); it.x -= st; } else if (ev.key === 'ArrowRight') { snap(); it.x += st; }
+  else if (ev.key === 'ArrowUp') { snap(); it.y += st; } else if (ev.key === 'ArrowDown') { snap(); it.y -= st; }
+  else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'd') { ev.preventDefault(); snap(); const n = {...it, id:uid(), x:it.x+2, y:it.y+2}; sc().items.push(n); sel = n.id; }
+  else return;
+  ev.preventDefault(); save(); refresh();
+});
+function undo(){ if (!hist.length) return; S = JSON.parse(hist.pop()); sel = null; save(); renderScenarios(); refresh(); }
+$('#undo').onclick = undo;
+$('#layers').addEventListener('change', ev => { const l = ev.target.dataset.l; if (!l) return; L[l] = ev.target.checked; lightRefresh(); });
+$('#scenario').onchange = ev => { S.active = +ev.target.value; sel = null; save(); refresh(); };
+$('#dupScenario').onclick = () => { snap(); const c = JSON.parse(JSON.stringify(sc())); c.items.forEach(i => i.id = uid()); c.name = 'Copy of ' + c.name.replace(/^[A-Z] · /, ''); S.sc.push(c); S.active = S.sc.length - 1; sel = null; save(); renderScenarios(); refresh(); };
+$('#date').onchange = ev => { if (ev.target.value) { S.date = ev.target.value; save(); lightRefresh(); renderSide(); } };
+$('#hour').oninput = ev => { S.hour = +ev.target.value; lightRefresh(); };
+$('#hour').onchange = () => save();
+$('#hud').addEventListener('click', ev => { const b = ev.target.closest('[data-d]'); if (!b) return; S.date = b.dataset.d === 'today' ? todayStr() : b.dataset.d; save(); lightRefresh(); renderSide(); });
+let timer = null;
+$('#play').onclick = () => {
+  if (timer) { clearInterval(timer); timer = null; $('#play').textContent = 'Play day'; return; }
+  $('#play').textContent = 'Pause'; if (S.hour >= 20.5) S.hour = 5.5;
+  timer = setInterval(() => { S.hour += .1; if (S.hour > 21) { S.hour = 5.5; } lightRefresh(); }, 70);
+};
+$('#exportBtn').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], {type:'application/json'})); a.download = 'backyard-layouts.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+$('#importBtn').onclick = () => $('#importFile').click();
+$('#importFile').onchange = async ev => { const f = ev.target.files[0]; if (!f) return; try { const j = JSON.parse(await f.text()); if (!Array.isArray(j.sc)) throw 0; snap(); S = j; sel = null; save(); renderScenarios(); refresh(); } catch(e) { alert('That file is not a backyard layout.'); } ev.target.value = ''; };
+$('#resetBtn').onclick = () => { if (!confirm('Reset all layouts to the starter set?')) return; snap(); S = defaultState(); sel = null; save(); renderScenarios(); refresh(); };
+addEventListener('resize', () => { applyView(); if (api3d) api3d.resize(); });
+
+/* ============================================================
+   3D VIEW (three.js, loaded on first use)
+   three space: X = plan x, Y = up, Z = -plan y
+   ============================================================ */
+let api3d = null, loading3d = false;
+async function init3d(){
+  if (api3d || loading3d) return; loading3d = true;
+  let THREE, OrbitControls;
+  try { THREE = await import('three'); ({OrbitControls} = await import('three/addons/controls/OrbitControls.js')); }
+  catch(e) { $('#three').innerHTML = '<div style="padding:30px;color:var(--dim)">3D needs a network connection to load three.js. The 2D plan works offline.</div>'; loading3d = false; return; }
+  const host = $('#three'), R = new THREE.WebGLRenderer({antialias:true}); R.setPixelRatio(Math.min(devicePixelRatio, 2)); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+  host.appendChild(R.domElement); R.domElement.style.cssText = 'width:100%;height:100%;display:block';
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(50, 1, .5, 800);
+  const ctl = new OrbitControls(cam, R.domElement); ctl.maxPolarAngle = Math.PI*.495;
+  const VIEWS = {house:[[50,48,-74],[38,0,-18]], rear:[[42,22,14],[38,3,-30]], top:[[38,95,-24],[38,0,-25]], garage:[[-8,30,-12],[40,0,-22]]};
+  const goView = n => { const [p,t] = VIEWS[n]; cam.position.set(...p); ctl.target.set(...t); ctl.update(); };
+  goView('house');
+  const hemi = new THREE.HemisphereLight(0xcfe3ff, 0x4b5a3a, .75); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xfff1d6, 2.4); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  const sc_ = sun.shadow.camera; sc_.left = -75; sc_.right = 75; sc_.top = 75; sc_.bottom = -75; sc_.near = 1; sc_.far = 400; sun.shadow.bias = -.0004; sun.shadow.normalBias = .15;
+  scene.add(sun, sun.target); sun.target.position.set(38, 0, -30);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({color:c, roughness:.9, metalness:0, ...o});
+  const shape = P => { const s = new THREE.Shape(); P.forEach(([x,y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); return s; };
+  const flat = (P, color, y, extra = {}) => { const m = new THREE.Mesh(new THREE.ShapeGeometry(shape(P)), M(color, extra)); m.rotation.x = -Math.PI/2; m.position.y = y; m.receiveShadow = true; return m; };
+  const slab = (P, h, color) => { const m = new THREE.Mesh(new THREE.ExtrudeGeometry(shape(P), {depth:h, bevelEnabled:false}), M(color)); m.rotation.x = -Math.PI/2; m.castShadow = m.receiveShadow = true; return m; };
+  // static world
+  const world = new THREE.Group(); scene.add(world);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), M(0x2a3a2c)); ground.rotation.x = -Math.PI/2; ground.position.y = -.05; ground.receiveShadow = true; world.add(ground);
+  world.add(flat(YARD, 0xcfcbc0, 0.01), flat(SIDE, 0x5a9a4b, 0.012), flat(LAWN, 0x4f9a45, 0.02), flat(PATIO, 0x8e949c, 0.04), flat(NOOK, 0xb9b6ad, 0.03), flat(LOT_STRIP(), 0x6d6a62, 0.005));
+  function LOT_STRIP(){ return [[0,0],[10.4,0],[10.4,43],[0,43]]; }
+  world.add(slab(GARAGE, GARAGE_H, 0x7e8da0), slab(HOUSE, HOUSE_H, 0x8fa3b8));
+  const roof = (P, h, c) => { const m = flat(P.map(([x,y]) => [x,y]), c, h + .02); return m; };
+  world.add(roof(HOUSE, HOUSE_H, 0x3b4048), roof(GARAGE, GARAGE_H, 0x3b4048));
+  FENCE.forEach(([a,b]) => { const len = Math.hypot(b[0]-a[0], b[1]-a[1]); const m = new THREE.Mesh(new THREE.BoxGeometry(len, FENCE_H, .25), M(0x7a5e43)); m.position.set((a[0]+b[0])/2, FENCE_H/2, -(a[1]+b[1])/2); m.rotation.y = Math.atan2(b[1]-a[1], b[0]-a[0]); m.castShadow = m.receiveShadow = true; world.add(m); });
+  AC.forEach(a => { const m = new THREE.Mesh(new THREE.BoxGeometry(a.w, 2.8, a.d), M(0x7c868f)); m.position.set(a.x, 1.4, -a.y); m.castShadow = true; world.add(m); });
+  const oakG = new THREE.Group(); world.add(oakG);
+  function tree(g, x, y, r, h, color, trunk = .35){
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(trunk*.7, trunk, h*.5, 10), M(0x5b4330)); t.position.set(0, h*.25, 0); t.castShadow = true; g.add(t);
+    const c = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), M(color, {roughness:1})); c.scale.set(r, Math.max(h*.32, r*.5), r); c.position.set(0, h*.7, 0); c.castShadow = c.receiveShadow = true; g.add(c);
+    g.position.set(x, 0, -y);
+  }
+  const itemsG = new THREE.Group(); scene.add(itemsG);
+  function buildOak(){ oakG.clear(); tree(oakG, S.oak.x, S.oak.y, S.oak.r, 36, 0x2f6b3c, 1.4); }
+  function buildItems(){
+    itemsG.clear();
+    sc().items.forEach(it => {
+      const d = DEF[it.k], g = new THREE.Group(); g.position.set(it.x, 0, -it.y); g.rotation.y = it.rot*RAD;
+      const box = (w, h, dd, c, y = 0, o = {}) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dd), M(c, o)); m.position.y = y + h/2; m.castShadow = m.receiveShadow = true; return m; };
+      if (d.kind === 'tree') { const w = new THREE.Group(); tree(w, 0, 0, it.w/2, d.h, new THREE.Color(d.color).lerp(new THREE.Color(0x3f7d3f), .55).getHex(), .25); g.add(w); }
+      else if (d.kind === 'shrub') { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), M(d.color, {roughness:1})); m.scale.set(it.w/2, d.h/2, it.d/2); m.position.y = d.h/2; m.castShadow = m.receiveShadow = true; g.add(m); }
+      else if (d.kind === 'bed') { g.add(box(it.w, d.h, it.d, 0x8a6a46)); g.add(box(it.w-.6, .06, it.d-.6, 0x3e2c1c, d.h)); for (let i = 0; i < Math.floor(it.w/1.4); i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(.45, 10, 8), M(0x5fae55)); m.position.set(-it.w/2+.9+i*1.4, d.h+.35, 0); m.castShadow = true; g.add(m); } }
+      else if (it.k === 'pergola') { [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b]) => g.add(box(.5, d.h, .5, 0x6a5238, 0).translateX(a*(it.w/2-.3)).translateZ(b*(it.d/2-.3)))); for (let i = 0; i < Math.floor(it.w/1.1); i++) g.add(box(.35, .5, it.d+1, 0x8a6a46, d.h).translateX(-it.w/2+.55+i*1.1)); }
+      else if (it.k === 'sail') { const m = new THREE.Mesh(new THREE.PlaneGeometry(it.w, it.d), new THREE.MeshStandardMaterial({color:d.color, side:THREE.DoubleSide, transparent:true, opacity:.85, roughness:1})); m.rotation.x = -Math.PI/2 + .12; m.position.y = d.h; m.castShadow = true; g.add(m); [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b]) => g.add(box(.3, d.h, .3, 0x555b61).translateX(a*it.w/2).translateZ(b*it.d/2))); }
+      else if (it.k === 'shed') { g.add(box(it.w, d.h-1.5, it.d, 0x8d98a3)); const r = box(it.w+.8, .5, it.d+.8, 0x3b4048, d.h-1.5); r.rotation.z = .05; g.add(r); }
+      else if (d.shape === 'circle') { const m = new THREE.Mesh(new THREE.CylinderGeometry(it.w/2, it.w/2, d.h, 20), M(d.color)); m.position.y = d.h/2; m.castShadow = m.receiveShadow = true; g.add(m); if (it.k === 'firepit') { const f = new THREE.Mesh(new THREE.CylinderGeometry(it.w*.3, it.w*.3, .1, 16), new THREE.MeshStandardMaterial({color:0xff7a2e, emissive:0xff5a14, emissiveIntensity:1.6})); f.position.y = d.h + .02; g.add(f); } }
+      else g.add(box(it.w, d.h, it.d, d.color));
+      itemsG.add(g);
+    });
+  }
+  function updateSun(){
+    const sp = sunPos(S.date, S.hour), v = sunVec(sp), up = sp.alt > 0;
+    const dir = new THREE.Vector3(v.x, v.z, -v.y).normalize();
+    sun.position.copy(sun.target.position).addScaledVector(dir, 150); sun.visible = up; sun.intensity = up ? Math.min(2.6, .4 + sp.alt*3.5) : 0;
+    const a = Math.max(0, sp.alt); hemi.intensity = up ? .35 + Math.min(.45, a*1.2) : .18;
+    scene.background = new THREE.Color(!up ? 0x0a1020 : sp.alt < .22 ? 0xf0b58a : 0x9ec7ea);
+    sun.color.set(sp.alt < .2 ? 0xffb066 : 0xfff1d6);
+  }
+  function resize(){ const r = host.getBoundingClientRect(); if (!r.width) return; R.setSize(r.width, r.height, false); cam.aspect = r.width/r.height; cam.updateProjectionMatrix(); }
+  (function loop(){ requestAnimationFrame(loop); if (mode === '3d') { ctl.update(); R.render(scene, cam); } })();
+  api3d = {sync(){ buildOak(); buildItems(); updateSun(); }, sun: updateSun, resize, goView}; loading3d = false;
+  api3d.sync(); resize();
+}
+function setMode(m){
+  mode = m; $('#v2d').classList.toggle('on', m === '2d'); $('#v3d').classList.toggle('on', m === '3d');
+  svg.style.display = m === '2d' ? 'block' : 'none'; $('#three').style.display = m === '3d' ? 'block' : 'none';
+  $('#camSeg').style.display = m === '3d' ? '' : 'none';
+  $('#layers').style.display = $('.zoom').style.display = $('#readout').style.display = m === '2d' ? '' : 'none';
+  if (m === '3d') { init3d().then(() => { if (api3d) { api3d.sync(); api3d.resize(); } }); } else applyView();
+}
+$('#camSeg').addEventListener('click', ev => { const b = ev.target.closest('[data-v]'); if (b && api3d) api3d.goView(b.dataset.v); });
+$('#v2d').onclick = () => setMode('2d'); $('#v3d').onclick = () => setMode('3d');
+
+/* ---------- boot ---------- */
+renderPalette(); renderScenarios(); fitView();
+// deep links: #heat  #3d  #A/#B/#C  #summer/#winter  (combine with commas, e.g. #B,heat)
+for (const t of location.hash.slice(1).toLowerCase().split(',')) {
+  if (t === 'heat') { L.heat = true; document.querySelector('[data-l=heat]').checked = true; }
+  else if (/^[a-z]$/.test(t) && S.sc[t.charCodeAt(0) - 97]) S.active = t.charCodeAt(0) - 97;
+  else if (t === 'summer') S.date = '2026-06-21'; else if (t === 'winter') S.date = '2026-12-21';
+  else if (t.startsWith('h') && !isNaN(+t.slice(1))) S.hour = +t.slice(1);
+}
+refresh();
+if (location.hash.toLowerCase().includes('3d')) setMode('3d');
+</script>
+</body>
+</html>
